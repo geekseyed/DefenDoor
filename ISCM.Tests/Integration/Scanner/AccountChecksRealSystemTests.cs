@@ -1,8 +1,10 @@
 ﻿using ISCM.Application.Evaluators;
 using ISCM.Application.Evaluators.Typed;
+using ISCM.Application.Interfaces;
 using ISCM.Application.Services;
 using ISCM.Domain.Entities;
 using ISCM.Domain.Enums;
+using ISCM.Infrastructure.Scanning;
 using ISCM.Infrastructure.Scanning.Checks;
 using Xunit;
 using FluentAssertions;
@@ -11,9 +13,20 @@ namespace ISCM.Tests.Integration.Scanner;
 
 /// <summary>
 /// Real-system integration tests for Phase 10.6 Account Checks migration.
+/// Phase 14.3: Updated to inject IProcessCacheService into checks.
 /// </summary>
 public class AccountChecksRealSystemTests
 {
+    /// <summary>
+    /// Phase 14.3: Helper to create real process cache for tests.
+    /// </summary>
+    private static IProcessCacheService CreateProcessCache()
+    {
+        var processRunner = new ProcessRunner();
+        var configService = new ScannerConfigurationService();
+        return new CachedProcessRunner(processRunner, configService);
+    }
+
     // =========================================================================
     // AccountLockoutCheck (LCK-001) Tests
     // =========================================================================
@@ -31,7 +44,8 @@ public class AccountChecksRealSystemTests
             new PolicyValueEvaluator());
 
         var controlEvaluator = new ControlEvaluator(typedEvaluator);
-        var lockoutCheck = new AccountLockoutCheck();
+        var processCache = CreateProcessCache();
+        var lockoutCheck = new AccountLockoutCheck(processCache);
 
         // Act - Collect evidence
         var evidenceList = await lockoutCheck.CollectEvidenceAsync();
@@ -117,7 +131,8 @@ public class AccountChecksRealSystemTests
     [Fact]
     public async Task AccountLockoutCheck_CollectEvidenceAsync_ReturnsCorrectSubControlIds()
     {
-        var lockoutCheck = new AccountLockoutCheck();
+        var processCache = CreateProcessCache();
+        var lockoutCheck = new AccountLockoutCheck(processCache);
         var evidenceList = await lockoutCheck.CollectEvidenceAsync();
         var subControlIds = evidenceList.Select(e => e.SubControlId).ToList();
 

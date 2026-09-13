@@ -1,8 +1,10 @@
 ﻿using ISCM.Application.Evaluators;
 using ISCM.Application.Evaluators.Typed;
+using ISCM.Application.Interfaces;
 using ISCM.Application.Services;
 using ISCM.Domain.Entities;
 using ISCM.Domain.Enums;
+using ISCM.Infrastructure.Scanning;
 using ISCM.Infrastructure.Scanning.Checks;
 using Xunit;
 using FluentAssertions;
@@ -11,7 +13,8 @@ namespace ISCM.Tests.Integration.Scanner;
 
 /// <summary>
 /// Real-system integration tests for Phase 10.7 Audit Checks migration.
-/// 
+/// Phase 14.3: Updated to inject IProcessCacheService into checks that need it.
+///
 /// 4 checks migrated:
 ///   - AdvancedAuditCheck (AUD-001, 11 SubControls)
 ///   - ProcessCreationAuditingCheck (PRC-001, 3 SubControls)
@@ -20,6 +23,16 @@ namespace ISCM.Tests.Integration.Scanner;
 /// </summary>
 public class AuditChecksRealSystemTests
 {
+    /// <summary>
+    /// Phase 14.3: Helper to create real process cache for tests.
+    /// </summary>
+    private static IProcessCacheService CreateProcessCache()
+    {
+        var processRunner = new ProcessRunner();
+        var configService = new ScannerConfigurationService();
+        return new CachedProcessRunner(processRunner, configService);
+    }
+
     private static (ExpectedValueParser, TypedEvidenceEvaluator, ControlEvaluator) BuildTypedPipeline()
     {
         var parser = new ExpectedValueParser();
@@ -42,7 +55,8 @@ public class AuditChecksRealSystemTests
     public async Task AdvancedAuditCheck_RealSystem_ProducesValidFindings()
     {
         var (_, _, controlEvaluator) = BuildTypedPipeline();
-        var check = new AdvancedAuditCheck();
+        var processCache = CreateProcessCache();
+        var check = new AdvancedAuditCheck(processCache);
 
         var evidenceList = await check.CollectEvidenceAsync();
 
@@ -105,7 +119,8 @@ public class AuditChecksRealSystemTests
     [Fact]
     public async Task AdvancedAuditCheck_CollectEvidenceAsync_ReturnsCorrectSubControlIds()
     {
-        var check = new AdvancedAuditCheck();
+        var processCache = CreateProcessCache();
+        var check = new AdvancedAuditCheck(processCache);
         var evidenceList = await check.CollectEvidenceAsync();
         var subControlIds = evidenceList.Select(e => e.SubControlId).ToList();
 

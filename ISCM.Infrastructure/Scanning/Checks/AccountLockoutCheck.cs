@@ -5,7 +5,6 @@ using ISCM.Domain.Enums;
 using ISCM.Domain.ValueObjects;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -14,12 +13,13 @@ namespace ISCM.Infrastructure.Scanning.Checks;
 
 /// <summary>
 /// Phase 10.6: Account Lockout Policy Check (Collector-only pattern).
-/// 
+/// Phase 14.3: Refactored to use IProcessCacheService for command execution.
+///
 /// این چک **فقط Collector** است:
 /// - Evidence تولید می‌کند (RawOutput + TypedValue)
 /// - Evidence.Evaluation = NotScanned (ارزیابی نمی‌کند)
 /// - Scanner مسئول ارزیابی تایپ‌شده با استفاده از کاتالوگ است
-/// 
+///
 /// SubControls:
 ///   - LCK-001.1: Account lockout threshold (Integer, LessOrEqual, 5)
 ///   - LCK-001.2: Account lockout duration (Duration minutes, GreaterOrEqual, 15)
@@ -29,39 +29,45 @@ namespace ISCM.Infrastructure.Scanning.Checks;
 public class AccountLockoutCheck : BaseHardeningCheck
 {
     private readonly IEvidenceParser _registryParser;
+    private readonly IProcessCacheService _processCache;
 
     public override string CheckId => "LCK-001";
     public override string Name => "Account Lockout Policy";
     public override CheckCategory Category => CheckCategory.Account;
     public override CheckSeverity Severity => CheckSeverity.High;
 
-    public AccountLockoutCheck()
+    public AccountLockoutCheck(IProcessCacheService processCache)
     {
         _registryParser = new RegistryParser();
+        _processCache = processCache ?? throw new ArgumentNullException(nameof(processCache));
     }
 
     /// <summary>
     /// Phase 10.6: Collects evidence for all 3 lockout policy SubControls.
+    /// Phase 14.3: Uses cached process execution for 'net accounts'.
     /// </summary>
     public override async Task<List<Evidence>> CollectEvidenceAsync()
     {
         var evidenceList = new List<Evidence>();
 
-        evidenceList.Add(await CollectLockoutThreshold());
-        evidenceList.Add(await CollectLockoutDuration());
-        evidenceList.Add(await CollectLockoutObservationWindow());
+        // Run 'net accounts' once and cache the result
+        var processResult = await _processCache.GetOrRunAsync("net", "accounts");
+        var rawOutput = processResult.OutputOrError;
+
+        evidenceList.Add(CollectLockoutThreshold(rawOutput));
+        evidenceList.Add(CollectLockoutDuration(rawOutput));
+        evidenceList.Add(CollectLockoutObservationWindow(rawOutput));
 
         return evidenceList;
     }
 
-    private async Task<Evidence> CollectLockoutThreshold()
+    private Evidence CollectLockoutThreshold(string rawOutput)
     {
         var subControlId = "LCK-001.1";
         var startTime = DateTime.UtcNow;
 
         try
         {
-            var rawOutput = await RunCommandAsync("net", "accounts");
             var parsedValue = _registryParser.Parse(rawOutput, "NetAccounts");
             var typedValue = ExtractIntegerFromLine(rawOutput, "Lockout threshold");
 
@@ -86,14 +92,13 @@ public class AccountLockoutCheck : BaseHardeningCheck
         }
     }
 
-    private async Task<Evidence> CollectLockoutDuration()
+    private Evidence CollectLockoutDuration(string rawOutput)
     {
         var subControlId = "LCK-001.2";
         var startTime = DateTime.UtcNow;
 
         try
         {
-            var rawOutput = await RunCommandAsync("net", "accounts");
             var parsedValue = _registryParser.Parse(rawOutput, "NetAccounts");
             var typedValue = ExtractDurationFromLine(rawOutput, "Lockout duration", "minutes");
 
@@ -118,14 +123,13 @@ public class AccountLockoutCheck : BaseHardeningCheck
         }
     }
 
-    private async Task<Evidence> CollectLockoutObservationWindow()
+    private Evidence CollectLockoutObservationWindow(string rawOutput)
     {
         var subControlId = "LCK-001.3";
         var startTime = DateTime.UtcNow;
 
         try
         {
-            var rawOutput = await RunCommandAsync("net", "accounts");
             var parsedValue = _registryParser.Parse(rawOutput, "NetAccounts");
             var typedValue = ExtractDurationFromLine(rawOutput, "Lockout observation window", "minutes");
 
@@ -232,29 +236,5 @@ public class AccountLockoutCheck : BaseHardeningCheck
         }
 
         return EvidenceValue.FromDuration(new DurationValue(0, DurationUnit.Minutes));
-    }
-
-    private static async Task<string> RunCommandAsync(string cmd, string args)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo(cmd, args)
-            {
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(psi);
-            if (process == null) return "Process not started";
-
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
-            return output;
-        }
-        catch (Exception ex)
-        {
-            return $"Error: {ex.Message}";
-        }
     }
 }

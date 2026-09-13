@@ -5,7 +5,6 @@ using ISCM.Domain.Enums;
 using ISCM.Domain.ValueObjects;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Runtime.Versioning;
 using System.Threading.Tasks;
 
@@ -13,18 +12,20 @@ namespace ISCM.Infrastructure.Scanning.Checks;
 
 /// <summary>
 /// Phase 10.7: Advanced Audit Policy Check (Collector-only pattern).
-/// 
+/// Phase 14.3: Refactored to use IProcessCacheService for command execution.
+///
 /// این چک **فقط Collector** است:
 /// - Evidence تولید می‌کند (RawOutput + TypedValue)
 /// - Evidence.Evaluation = NotScanned (ارزیابی نمی‌کند)
 /// - Scanner مسئول ارزیابی تایپ‌شده با استفاده از کاتالوگ است
-/// 
+///
 /// 11 SubControls از نوع Collection با SetMembership operator.
 /// </summary>
 [SupportedOSPlatform("windows")]
 public class AdvancedAuditCheck : BaseHardeningCheck
 {
     private readonly IEvidenceParser _registryParser;
+    private readonly IProcessCacheService _processCache;
 
     public override string CheckId => "AUD-001";
     public override string Name => "Advanced Audit Policy";
@@ -47,17 +48,19 @@ public class AdvancedAuditCheck : BaseHardeningCheck
         { "AUD-001.11", "Security System Extension" }
     };
 
-    public AdvancedAuditCheck()
+    public AdvancedAuditCheck(IProcessCacheService processCache)
     {
         _registryParser = new RegistryParser();
+        _processCache = processCache ?? throw new ArgumentNullException(nameof(processCache));
     }
 
     public override async Task<List<Evidence>> CollectEvidenceAsync()
     {
         var evidenceList = new List<Evidence>();
 
-        // Optimize: run auditpol once for all subcategories
-        var allOutput = await RunCommandAsync("auditpol", "/get /category:*");
+        // Run auditpol once for all subcategories (cached)
+        var processResult = await _processCache.GetOrRunAsync("auditpol", "/get /category:*");
+        var allOutput = processResult.OutputOrError;
 
         foreach (var kvp in SubControlToSubcategory)
         {
@@ -132,7 +135,7 @@ public class AdvancedAuditCheck : BaseHardeningCheck
 
     /// <summary>
     /// Parses auditpol output for a specific subcategory into a Collection of enabled settings.
-    /// 
+    ///
     /// Possible auditpol outputs:
     ///   "Success and Failure" → ["Success", "Failure"]
     ///   "Success" → ["Success"]
@@ -179,29 +182,5 @@ public class AdvancedAuditCheck : BaseHardeningCheck
             Error = ex.Message,
             CollectedAtUtc = DateTime.UtcNow
         };
-    }
-
-    private static async Task<string> RunCommandAsync(string cmd, string args)
-    {
-        try
-        {
-            var psi = new ProcessStartInfo(cmd, args)
-            {
-                RedirectStandardOutput = true,
-                UseShellExecute = false,
-                CreateNoWindow = true
-            };
-
-            using var process = Process.Start(psi);
-            if (process == null) return "Process not started";
-
-            var output = await process.StandardOutput.ReadToEndAsync();
-            await process.WaitForExitAsync();
-            return output;
-        }
-        catch (Exception ex)
-        {
-            return $"Error: {ex.Message}";
-        }
     }
 }
