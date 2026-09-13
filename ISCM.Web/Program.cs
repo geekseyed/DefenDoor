@@ -84,6 +84,20 @@ builder.Services.AddSingleton<IEnvironmentDetector, EnvironmentDetector>();
 // Phase 14.2: Adaptive Execution Engine
 // ═══════════════════════════════════════════════════════════
 builder.Services.AddSingleton<IAdaptiveExecutionEngine, AdaptiveExecutionEngine>();
+// ═══════════════════════════════════════════════════════════
+// Phase 14.3: Process Caching Layer
+// ═══════════════════════════════════════════════════════════
+
+// Base process runner (executes Process.Start directly)
+builder.Services.AddSingleton<ISCM.Application.Interfaces.IProcessRunner, ISCM.Infrastructure.Scanning.ProcessRunner>();
+
+// Cached process runner (decorator with TTL-based caching)
+builder.Services.AddSingleton<ISCM.Application.Interfaces.IProcessCacheService>(sp =>
+{
+    var runner = sp.GetRequiredService<ISCM.Application.Interfaces.IProcessRunner>();
+    var config = sp.GetRequiredService<ISCM.Application.Interfaces.IScannerConfigurationService>();
+    return new ISCM.Infrastructure.Scanning.CachedProcessRunner(runner, config);
+});
 
 // Phase 5: Parsers
 builder.Services.AddSingleton<RegistryParser>();
