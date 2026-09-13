@@ -76,6 +76,10 @@ builder.Services.AddSingleton<IScanFingerprintGenerator, ScanFingerprintGenerato
 builder.Services.AddSingleton<IFingerprintValidationService, FingerprintValidationService>();
 builder.Services.AddTransient<IScanContext, ScanContext>(sp =>
     new ScanContext("default", ISCM.Domain.Enums.ScanMode.Full));
+// ═══════════════════════════════════════════════════════════
+// Phase 14.1: Environment Detection Service
+// ═══════════════════════════════════════════════════════════
+builder.Services.AddSingleton<IEnvironmentDetector, EnvironmentDetector>();
 
 // Phase 5: Parsers
 builder.Services.AddSingleton<RegistryParser>();
