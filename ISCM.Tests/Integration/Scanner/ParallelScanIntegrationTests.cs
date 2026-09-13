@@ -4,21 +4,101 @@ using ISCM.Application.Services;
 using ISCM.Application.Services.Agreement;
 using ISCM.Domain.Entities;
 using ISCM.Domain.Enums;
+using ISCM.Domain.ValueObjects;
 using ISCM.Infrastructure.Scanning;
 using ISCM.Infrastructure.Scanning.Collectors;
 using Moq;
-using System.Diagnostics;
+using System.Threading;
 using Xunit;
 
 namespace ISCM.Tests.Integration.Scanner;
 
+/// <summary>
+/// Phase 14.5: Portable integration tests for parallel scan execution.
+///
+/// Uses concurrency tracking instead of timing assertions.
+/// IControlEvaluator is unconfigured mock - findings may be null (test artifact).
+/// </summary>
 public class ParallelScanIntegrationTests
 {
-    [Fact]
-    public async Task RunScanAsync_ExecutesChecksInParallel_CompletesFaster()
+    private sealed class ConcurrencyTracker
     {
-        // Arrange: Use real WindowsSystemInfoCollector (fast registry reads)
-        // Moq cannot mock non-virtual methods, so we use the real collector.
+        private int _current = 0;
+        private int _maxConcurrent = 0;
+        private int _totalEntries = 0;
+
+        public void Enter()
+        {
+            Interlocked.Increment(ref _totalEntries);
+            var current = Interlocked.Increment(ref _current);
+
+            int observed;
+            do
+            {
+                observed = Volatile.Read(ref _maxConcurrent);
+                if (current <= observed) break;
+            }
+            while (Interlocked.CompareExchange(ref _maxConcurrent, current, observed) != observed);
+        }
+
+        public void Exit()
+        {
+            Interlocked.Decrement(ref _current);
+        }
+
+        public int MaxConcurrent => Volatile.Read(ref _maxConcurrent);
+        public int TotalEntries => Volatile.Read(ref _totalEntries);
+    }
+
+    private sealed class ConcurrencyTrackingCheck : IHardeningCheck, IEvidenceCollector
+    {
+        public string CheckId { get; }
+        public string Name => CheckId;
+        public CheckCategory Category => CheckCategory.System;
+        public CheckSeverity Severity => CheckSeverity.Low;
+        public string CollectorId => CheckId;
+
+        private readonly ConcurrencyTracker _tracker;
+        private readonly int _delayMs;
+
+        public ConcurrencyTrackingCheck(string checkId, ConcurrencyTracker tracker, int delayMs)
+        {
+            CheckId = checkId;
+            _tracker = tracker;
+            _delayMs = delayMs;
+        }
+
+        public async Task<List<Evidence>> CollectEvidenceAsync()
+        {
+            _tracker.Enter();
+            try
+            {
+                await Task.Delay(_delayMs);
+                return new List<Evidence>
+                {
+                    new Evidence
+                    {
+                        EvidenceId = Guid.NewGuid().ToString(),
+                        SubControlId = $"{CheckId}.1",
+                        TechnicalCheckId = CheckId,
+                        SourceType = EvidenceSourceType.Other,
+                        SourceName = "ConcurrencyTracker",
+                        TypedValue = EvidenceValue.FromBoolean(true),
+                        Evaluation = CheckStatus.NotScanned
+                    }
+                };
+            }
+            finally
+            {
+                _tracker.Exit();
+            }
+        }
+    }
+
+    private static WindowsHardeningScanner BuildScanner(
+        List<IHardeningCheck> checks,
+        int maxDegreeOfParallelism)
+    {
         var systemInfoCollector = new WindowsSystemInfoCollector();
 
         var mockBaseline = new Mock<IBaselineService>();
@@ -29,24 +109,11 @@ public class ParallelScanIntegrationTests
             Version = "1.0"
         });
 
-        // ═══════════════════════════════════════════════════════════════
-        // FIX: Use explicit concurrency = 3 instead of Environment.ProcessorCount
-        // This ensures the test is deterministic regardless of CPU count.
-        // 3 checks with 500ms each should complete in ~500-800ms when parallel.
-        // ═══════════════════════════════════════════════════════════════
         var mockConfig = new Mock<IScannerConfigurationService>();
-        mockConfig.Setup(x => x.GetMaxDegreeOfParallelism()).Returns(3);
+        mockConfig.Setup(x => x.GetMaxDegreeOfParallelism()).Returns(maxDegreeOfParallelism);
 
-        // Create 3 slow checks (500ms each)
-        var checks = new List<IHardeningCheck>
-        {
-            new SlowMockCheck("SLOW-001", 500),
-            new SlowMockCheck("SLOW-002", 500),
-            new SlowMockCheck("SLOW-003", 500)
-        };
-
-        var scanner = new WindowsHardeningScanner(
-            systemInfoCollector,  // ← REAL collector, not mock
+        return new WindowsHardeningScanner(
+            systemInfoCollector,
             checks,
             Mock.Of<IControlEvaluator>(),
             mockBaseline.Object,
@@ -58,50 +125,93 @@ public class ParallelScanIntegrationTests
             Mock.Of<VerificationPathService>(),
             new SubControlAggregationService(Mock.Of<IAgreementPolicy>()),
             mockConfig.Object);
-
-        // Act
-        var sw = Stopwatch.StartNew();
-        var result = await scanner.RunScanAsync();
-        sw.Stop();
-
-        // Assert
-        result.Findings.Should().HaveCount(3);
-        sw.ElapsedMilliseconds.Should().BeLessThan(1200,
-            "3x500ms checks should run concurrently in ~500-800ms, not serially");
     }
 
-    private class SlowMockCheck : IHardeningCheck, IEvidenceCollector
+    // =========================================================================
+    // Test 1: Completeness - all 3 collectors executed
+    // =========================================================================
+
+    [Fact]
+    public async Task RunScanAsync_ExecutesAllChecks_ReturnsCompleteResult()
     {
-        public string CheckId { get; }
-        public string Name => CheckId;
-        public CheckCategory Category => CheckCategory.System;
-        public CheckSeverity Severity => CheckSeverity.Low;
-        private readonly int _delayMs;
-
-        public SlowMockCheck(string id, int delayMs)
+        // Arrange
+        var tracker = new ConcurrencyTracker();
+        var checks = new List<IHardeningCheck>
         {
-            CheckId = id;
-            _delayMs = delayMs;
-        }
+            new ConcurrencyTrackingCheck("T-001", tracker, 100),
+            new ConcurrencyTrackingCheck("T-002", tracker, 100),
+            new ConcurrencyTrackingCheck("T-003", tracker, 100)
+        };
 
-        public string CollectorId => CheckId;
+        var scanner = BuildScanner(checks, maxDegreeOfParallelism: 3);
 
-        public async Task<List<Evidence>> CollectEvidenceAsync()
+        // Act
+        var result = await scanner.RunScanAsync();
+
+        // Assert
+        result.Should().NotBeNull();
+        result.ScanId.Should().NotBeNullOrEmpty();
+
+        // All 3 collectors ran to completion
+        tracker.TotalEntries.Should().Be(3, "all 3 checks should have executed");
+
+        // ScanResult has 3 finding slots (even if null due to unconfigured evaluator mock)
+        result.Findings.Should().HaveCount(3);
+
+        // No collector crashed (crash findings are NON-NULL with Error status)
+        result.Findings.Should().NotContain(
+            f => f != null && f.Status == CheckStatus.Error);
+    }
+
+    // =========================================================================
+    // Test 2: Parallel Execution - MaxDegreeOfParallelism=3
+    // =========================================================================
+
+    [Fact]
+    public async Task RunScanAsync_WithParallelism3_ExecutesChecksConcurrently()
+    {
+        // Arrange
+        var tracker = new ConcurrencyTracker();
+        var checks = new List<IHardeningCheck>
         {
-            await Task.Delay(_delayMs);
-            return new List<Evidence>
-            {
-                new Evidence
-                {
-                    EvidenceId = Guid.NewGuid().ToString(),
-                    SubControlId = $"{CheckId}.1",
-                    TechnicalCheckId = CheckId,
-                    SourceType = EvidenceSourceType.Other,
-                    SourceName = "Mock",
-                    TypedValue = Domain.ValueObjects.EvidenceValue.FromBoolean(true),
-                    Evaluation = CheckStatus.NotScanned
-                }
-            };
-        }
+            new ConcurrencyTrackingCheck("PAR-001", tracker, 300),
+            new ConcurrencyTrackingCheck("PAR-002", tracker, 300),
+            new ConcurrencyTrackingCheck("PAR-003", tracker, 300)
+        };
+
+        var scanner = BuildScanner(checks, maxDegreeOfParallelism: 3);
+
+        // Act
+        await scanner.RunScanAsync();
+
+        // Assert
+        tracker.MaxConcurrent.Should().Be(3,
+            "3 checks should execute concurrently when MaxDegreeOfParallelism=3");
+    }
+
+    // =========================================================================
+    // Test 3: Sequential Execution - MaxDegreeOfParallelism=1
+    // =========================================================================
+
+    [Fact]
+    public async Task RunScanAsync_WithParallelism1_ExecutesChecksSequentially()
+    {
+        // Arrange
+        var tracker = new ConcurrencyTracker();
+        var checks = new List<IHardeningCheck>
+        {
+            new ConcurrencyTrackingCheck("SEQ-001", tracker, 100),
+            new ConcurrencyTrackingCheck("SEQ-002", tracker, 100),
+            new ConcurrencyTrackingCheck("SEQ-003", tracker, 100)
+        };
+
+        var scanner = BuildScanner(checks, maxDegreeOfParallelism: 1);
+
+        // Act
+        await scanner.RunScanAsync();
+
+        // Assert
+        tracker.MaxConcurrent.Should().Be(1,
+            "only 1 check should execute at a time when MaxDegreeOfParallelism=1");
     }
 }
