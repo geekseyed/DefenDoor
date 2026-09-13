@@ -80,6 +80,10 @@ builder.Services.AddTransient<IScanContext, ScanContext>(sp =>
 // Phase 14.1: Environment Detection Service
 // ═══════════════════════════════════════════════════════════
 builder.Services.AddSingleton<IEnvironmentDetector, EnvironmentDetector>();
+// ═══════════════════════════════════════════════════════════
+// Phase 14.2: Adaptive Execution Engine
+// ═══════════════════════════════════════════════════════════
+builder.Services.AddSingleton<IAdaptiveExecutionEngine, AdaptiveExecutionEngine>();
 
 // Phase 5: Parsers
 builder.Services.AddSingleton<RegistryParser>();
