@@ -1,0 +1,441 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>ISCM Phase 14.6 — Documentation & Handover</title>
+<style>
+  :root {
+    --primary: #1a365d;
+    --secondary: #2b6cb0;
+    --accent: #3182ce;
+    --text: #1a202c;
+    --muted: #4a5568;
+    --border: #e2e8f0;
+    --bg: #f7fafc;
+    --code-bg: #1e293b;
+    --code-fg: #e2e8f0;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: Calibri, "Segoe UI", Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.45;
+    color: var(--text);
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 24px 32px;
+  }
+  h1 { color: var(--primary); font-size: 22pt; margin-top: 0; border-bottom: 3px solid var(--accent); padding-bottom: 8px; }
+  h2 { color: var(--primary); font-size: 16pt; margin-top: 28px; page-break-after: avoid; }
+  h3 { color: var(--secondary); font-size: 13pt; margin-top: 20px; page-break-after: avoid; }
+  h4 { color: var(--text); font-size: 11.5pt; margin-top: 14px; }
+  p, li { margin: 6px 0; }
+  table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 12px 0 16px;
+    font-size: 9.5pt;
+    page-break-inside: avoid;
+  }
+  th, td {
+    border: 1px solid var(--border);
+    padding: 6px 8px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--primary);
+    color: #fff;
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: var(--bg); }
+  code {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 9pt;
+    background: #edf2f7;
+    padding: 1px 4px;
+    border-radius: 3px;
+  }
+  pre {
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 8.5pt;
+    background: var(--code-bg);
+    color: var(--code-fg);
+    padding: 12px 14px;
+    border-radius: 6px;
+    overflow-x: auto;
+    line-height: 1.35;
+    page-break-inside: avoid;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  .meta-table td:first-child { font-weight: 600; width: 180px; }
+  .part-break {
+    page-break-before: always;
+    border-top: 3px solid var(--primary);
+    padding-top: 12px;
+    margin-top: 36px;
+  }
+  .note {
+    background: #ebf8ff;
+    border-left: 4px solid var(--accent);
+    padding: 8px 12px;
+    margin: 12px 0;
+  }
+  ul { padding-left: 22px; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  @media print {
+    body { padding: 0; max-width: none; font-size: 10pt; }
+    h1 { font-size: 18pt; }
+    h2 { font-size: 14pt; }
+    .part-break { page-break-before: always; }
+    a { color: inherit; text-decoration: none; }
+    pre { font-size: 7.5pt; }
+    table { font-size: 8.5pt; }
+  }
+</style>
+</head>
+<body>
+
+<h1>ISCM (DefenDoor Windows Hardening Scanner)</h1>
+<h2 style="border:none;margin-top:4px;">Phase 14.6 — Documentation & Handover</h2>
+
+<table class="meta-table">
+  <tr><td>Project</td><td>ISCM (DefenDoor Windows Hardening Scanner)</td></tr>
+  <tr><td>Document</td><td>Phase 14.6 — Documentation & Handover</td></tr>
+  <tr><td>Branch</td><td><code>epic/phase14-engine-boundary</code></td></tr>
+  <tr><td>Date</td><td>2026-09-13 (Shamsi: 1405-06-22)</td></tr>
+  <tr><td>Test baseline</td><td>189 tests, 0 flaky</td></tr>
+  <tr><td>Source of truth</td><td>Code on branch <code>epic/phase14-engine-boundary</code></td></tr>
+</table>
+
+<div class="part-break">
+<h2>PART 1 — PORTABILITY GUIDE</h2>
+</div>
+
+<h3>1. Architecture Overview</h3>
+<p>Phase 14 introduces four cooperating subsystems that form a detection → adaptation → caching → configuration chain. All four are registered as <strong>singletons</strong> in <code>ISCM.Web/Program.cs</code>.</p>
+
+<pre><code>┌─────────────────────────────────────────────────────────────────────────┐
+│  IEnvironmentDetector (14.1)
+│  EnvironmentDetector
+│  • Detects permissions, tools, hardware, performance tier
+│  • Caches EnvironmentProfile for service lifetime
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │ EnvironmentProfile
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  IAdaptiveExecutionEngine (14.2)
+│  AdaptiveExecutionEngine
+│  • Computes ScanExecutionProfile
+│  • Parallelism, timeouts, ChecksToSkip
+│  • Reads ScannerConfiguration for user overrides
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │ ScanExecutionProfile
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  IProcessCacheService (14.3)
+│  CachedProcessRunner  ──decorates──►  IProcessRunner (ProcessRunner)
+│  • TTL from ScannerConfiguration.CacheMaxAgeMinutes
+│  • ConcurrentDictionary + Interlocked stats
+│  • Failed results (ExitCode != 0) are never cached
+└───────────────────────────────┬─────────────────────────────────────────┘
+                                │
+                                ▼
+┌─────────────────────────────────────────────────────────────────────────┐
+│  IScannerConfigurationService (14.4)
+│  ScannerConfigurationService
+│  • Binds "Scanner" section from appsettings*.json
+│  • Profile selection via ASPNETCORE_ENVIRONMENT
+└─────────────────────────────────────────────────────────────────────────┘
+</code></pre>
+
+<p><strong>DI registration</strong> (from <code>ISCM.Web/Program.cs</code>):</p>
+<ul>
+  <li><code>IEnvironmentDetector</code> → <code>EnvironmentDetector</code> (Singleton)</li>
+  <li><code>IAdaptiveExecutionEngine</code> → <code>AdaptiveExecutionEngine</code> (Singleton)</li>
+  <li><code>IProcessRunner</code> → <code>ProcessRunner</code> (Singleton)</li>
+  <li><code>IProcessCacheService</code> → <code>CachedProcessRunner(runner, config)</code> (Singleton)</li>
+  <li><code>IScannerConfigurationService</code> → <code>ScannerConfigurationService(configuration)</code> (Singleton)</li>
+</ul>
+
+<h3>2. Environment Detection (14.1)</h3>
+
+<h4>2.1 EnvironmentProfile sections</h4>
+<p>Source: <code>EnvironmentProfile.cs</code>, <code>EnvironmentDetector.cs</code>.</p>
+<table>
+  <tr><th>Section</th><th>Type</th><th>Fields</th></tr>
+  <tr><td><strong>Permissions</strong></td><td><code>PermissionProfile</code></td><td><code>IsAdmin</code>, <code>CanReadRegistry</code>, <code>CanWriteRegistry</code>, <code>CanRunSecedit</code>, <code>CanRunPowerShell</code></td></tr>
+  <tr><td><strong>AvailableTools</strong></td><td><code>ToolAvailabilityProfile</code></td><td><code>PowerShell</code>, <code>PowerShellVersion</code>, <code>NetExe</code>, <code>Secedit</code>, <code>Auditpol</code></td></tr>
+  <tr><td><strong>Hardware</strong></td><td><code>HardwareProfile</code></td><td><code>ProcessorCount</code>, <code>TotalMemoryMB</code>, <code>IsVirtualMachine</code>, <code>MachineName</code></td></tr>
+  <tr><td><strong>PerformanceTier</strong></td><td><code>PerformanceTier</code> enum</td><td><code>Fast</code>, <code>Medium</code>, <code>Slow</code></td></tr>
+  <tr><td><strong>Warnings</strong></td><td><code>IReadOnlyList<string></code></td><td>Human-readable capability warnings</td></tr>
+  <tr><td><strong>DetectedAt</strong></td><td><code>DateTimeOffset</code></td><td>UTC timestamp of detection</td></tr>
+</table>
+<p>Derived flags: <code>IsFullyCapable</code> = IsAdmin && CanReadRegistry && PowerShell && NetExe; <code>HasCriticalDeficiencies</code> = !CanReadRegistry || !PowerShell.</p>
+
+<h4>2.2 VM detection</h4>
+<p><code>DetectIsVirtualMachine()</code> inspects:</p>
+<ol>
+  <li><strong>BIOS</strong> — <code>HKLM\HARDWARE\DESCRIPTION\System\BIOS</code> values <code>SystemManufacturer</code>, <code>SystemProductName</code>, <code>BIOSVersion</code> against indicators: VMware, VirtualBox, Hyper-V, QEMU, KVM, Xen, Parallels, Virtual Machine, VM.</li>
+  <li><strong>Disk</strong> — <code>HKLM\SYSTEM\CurrentControlSet\Services\Disk\Enum</code> for values containing Virtual, VMware, or QEMU.</li>
+</ol>
+
+<h4>2.3 Performance tier rules</h4>
+<table>
+  <tr><th>Condition</th><th>Tier</th></tr>
+  <tr><td><code>ProcessorCount < 2</code> OR <code>IsVirtualMachine</code></td><td><strong>Slow</strong></td></tr>
+  <tr><td><code>ProcessorCount < 4</code> OR <code>TotalMemoryMB < 4096</code></td><td><strong>Medium</strong></td></tr>
+  <tr><td>Otherwise</td><td><strong>Fast</strong></td></tr>
+</table>
+
+<h4>2.4 Caching</h4>
+<ul>
+  <li>Result stored in <code>_cachedProfile</code> under a private lock.</li>
+  <li><code>DetectEnvironmentAsync()</code> returns cached profile on subsequent calls.</li>
+  <li>Quick methods fall back to lightweight checks when cache is empty.</li>
+</ul>
+
+<h4>2.5 Warnings collected</h4>
+<table>
+  <tr><th>Condition</th><th>Warning text</th></tr>
+  <tr><td>!IsAdmin</td><td>Not running as Administrator - registry writes and remediations will fail</td></tr>
+  <tr><td>!CanReadRegistry</td><td>Cannot read HKLM registry - most checks will fail</td></tr>
+  <tr><td>!PowerShell</td><td>PowerShell not found - PowerShell-based checks will fail</td></tr>
+  <tr><td>!NetExe</td><td>net.exe not found - account-related checks will fail</td></tr>
+  <tr><td>!Secedit</td><td>secedit.exe not found - security policy checks will fail</td></tr>
+  <tr><td>IsVirtualMachine</td><td>Virtual machine detected - some hardware checks may be unreliable</td></tr>
+  <tr><td>ProcessorCount < 2</td><td>Low CPU count ({n}) - scan will run sequentially</td></tr>
+</table>
+
+<h3>3. Adaptive Execution (14.2)</h3>
+<p>Source: <code>AdaptiveExecutionEngine.cs</code>, <code>ScanExecutionProfile.cs</code>.</p>
+
+<h4>3.1 Parallelism rules</h4>
+<p>Priority: <strong>user override > environment tier</strong>.</p>
+<table>
+  <tr><th>Source</th><th>Rule</th></tr>
+  <tr><td>User override (<code>MaxDegreeOfParallelism > 0</code>)</td><td>Use configured value as-is</td></tr>
+  <tr><td>Fast tier</td><td><code>Environment.ProcessorCount</code></td></tr>
+  <tr><td>Medium tier</td><td><code>max(2, ProcessorCount / 2)</code></td></tr>
+  <tr><td>Slow tier</td><td><code>1</code> (sequential)</td></tr>
+</table>
+
+<h4>3.2 Timeout multiplier</h4>
+<table>
+  <tr><th>Tier</th><th>Multiplier</th></tr>
+  <tr><td>Fast</td><td>1.0×</td></tr>
+  <tr><td>Medium</td><td>1.5×</td></tr>
+  <tr><td>Slow</td><td>2.5×</td></tr>
+</table>
+<p>Base values: <code>ScannerConfiguration.CheckTimeoutSeconds</code> and <code>ParserTimeoutSeconds</code>.</p>
+
+<h4>3.3 Check-skip table</h4>
+<table>
+  <tr><th>CheckId</th><th>Required tool(s)</th></tr>
+  <tr><td><code>AUD-001</code></td><td><code>auditpol.exe</code></td></tr>
+  <tr><td><code>LCK-001</code></td><td><code>net.exe</code></td></tr>
+  <tr><td><code>PWD-001</code></td><td><code>net.exe</code></td></tr>
+  <tr><td><code>URA-001</code></td><td><code>secedit.exe</code></td></tr>
+</table>
+<div class="note"><strong>Note:</strong> Missing Administrator is a <strong>warning only</strong> and never causes a skip. Dictionary remains hardcoded; source contains TODO to move to CheckDefinition metadata.</div>
+<blockquote><strong>Note:</strong> this migration did NOT happen in Phase 14; it is scheduled as Phase 15 Track C (see PART 3, section 2).</blockquote>
+
+<h3>4. Process Caching (14.3)</h3>
+<p>Sources: <code>CachedProcessRunner.cs</code>, <code>ProcessRunner.cs</code>.</p>
+
+<h4>4.1 Cache key normalization</h4>
+<pre><code>// command trimmed + lowercased; arguments trimmed only (case preserved)
+return $"{normalizedCmd} {normalizedArgs}";
+</code></pre>
+
+<h4>4.2 TTL / failed results / thread-safety</h4>
+<ul>
+  <li>TTL from <code>ScannerConfiguration.CacheMaxAgeMinutes</code> (default 30).</li>
+  <li>Failed results (<code>ExitCode != 0</code>) are <strong>never</strong> cached.</li>
+  <li>Storage: <code>ConcurrentDictionary</code>; stats via <code>Interlocked</code>.</li>
+  <li><code>Invalidate(pattern)</code> removes keys starting with pattern; <code>InvalidateAll()</code> clears all.</li>
+</ul>
+
+<h4>4.3 Current consumers</h4>
+<table>
+  <tr><th>Check</th><th>Usage</th></tr>
+  <tr><td><code>AccountLockoutCheck</code></td><td><code>GetOrRunAsync("net", "accounts")</code></td></tr>
+  <tr><td><code>AdvancedAuditCheck</code></td><td><code>GetOrRunAsync("auditpol", "/get /category:*")</code></td></tr>
+</table>
+<p><code>PasswordLengthCheck</code> and <code>UserRightsCheck</code> still use private <code>Process.Start</code> helpers and do not consume the cache layer on this branch.</p>
+
+<h3>5. Configuration Profiles (14.4)</h3>
+<table>
+  <tr>
+    <th>Setting</th>
+    <th>Base</th>
+    <th>Development</th>
+    <th>Production</th>
+    <th>AirGapped</th>
+  </tr>
+  <tr><td>CacheMaxAgeMinutes</td><td>30</td><td>5</td><td>60</td><td>1440</td></tr>
+  <tr><td>EnableCache</td><td>true</td><td>(inherits)</td><td>true</td><td>true</td></tr>
+  <tr><td>MaxScanDurationMinutes</td><td>60</td><td>(inherits)</td><td>120</td><td>180</td></tr>
+  <tr><td>ParserTimeoutSeconds</td><td>30</td><td>10</td><td>60</td><td>180</td></tr>
+  <tr><td>CheckTimeoutSeconds</td><td>60</td><td>20</td><td>120</td><td>300</td></tr>
+  <tr><td>MaxDegreeOfParallelism</td><td>0</td><td>(inherits)</td><td>0</td><td>1</td></tr>
+  <tr><td>EnableFingerprintValidation</td><td>true</td><td>(inherits)</td><td>true</td><td>false</td></tr>
+  <tr><td>EnableFreshnessPolicy</td><td>true</td><td>(inherits)</td><td>true</td><td>true</td></tr>
+  <tr><td>VerboseLogging</td><td>false</td><td>true</td><td>false</td><td>false</td></tr>
+  <tr><td>LogRawOutput</td><td>false</td><td>true</td><td>false</td><td>false</td></tr>
+</table>
+<p>Selection via <code>ASPNETCORE_ENVIRONMENT</code>. Invalid values are ignored by <code>TryParse</code> (property keeps previous/default value).</p>
+
+<h3>6. Running on a New Machine</h3>
+<ol>
+  <li>Install .NET 8 (Windows x64).</li>
+  <li>Deploy binaries or <code>dotnet build</code>.</li>
+  <li>Optionally set <code>$env:ASPNETCORE_ENVIRONMENT</code> to Production / Development / AirGapped.</li>
+  <li>Ensure <code>%LOCALAPPDATA%\DefenDoor\Data</code> is writable.</li>
+  <li>Run: <code>dotnet run --project ISCM.Web</code>.</li>
+  <li>Confirm startup shows <code>Catalog Integrity Validation: PASSED</code>.</li>
+  <li>Execute Full scan; verify findings count vs registered checks.</li>
+</ol>
+
+<h3>7. Troubleshooting</h3>
+<table>
+  <tr><th>Symptom</th><th>Likely cause</th><th>Action</th></tr>
+  <tr><td>Catalog Integrity Validation: FAILED</td><td>Catalog definition issues</td><td>Inspect validator output; fix ControlCatalog</td></tr>
+  <tr><td>AUD-001 empty / Error</td><td>auditpol.exe missing</td><td>Ensure on PATH; expect skip in adaptive profile</td></tr>
+  <tr><td>Lockout / password checks fail</td><td>net.exe unavailable</td><td>Verify System32; check env warnings</td></tr>
+  <tr><td>User rights checks fail</td><td>secedit missing or non-admin</td><td>Confirm tool; run elevated if needed</td></tr>
+  <tr><td>Sequential scan on multi-core</td><td>Slow tier (VM) or AirGapped parallelism=1</td><td>Inspect Hardware.IsVirtualMachine and environment</td></tr>
+  <tr><td>Cache never hits</td><td>EnableCache=false, TTL, or failed commands only</td><td>GetStats(); verify successful exit codes</td></tr>
+  <tr><td>Remediations fail</td><td>Not Administrator</td><td>Restart elevated</td></tr>
+  <tr><td>SQLite / snapshot errors</td><td>Storage path not writable</td><td>Fix %LOCALAPPDATA%\DefenDoor\Data permissions</td></tr>
+</table>
+
+<div class="part-break">
+<h2>PART 2 — DEPLOYMENT CHECKLIST</h2>
+</div>
+
+<h3>1. Pre-deployment requirements</h3>
+<table>
+  <tr><th>Requirement</th><th>Detail</th></tr>
+  <tr><td>Runtime</td><td>.NET 8 (Windows)</td></tr>
+  <tr><td>OS</td><td>Windows 10/11 or Server 2019+</td></tr>
+  <tr><td>Storage</td><td>%LOCALAPPDATA%\DefenDoor\Data writable</td></tr>
+  <tr><td>Admin</td><td>Not required for scan-only; required for remediation</td></tr>
+  <tr><td>Tools</td><td>Prefer powershell, net, secedit, auditpol for full coverage</td></tr>
+</table>
+
+<h3>2. Profile selection</h3>
+<table>
+  <tr><th>Profile</th><th>When to use</th></tr>
+  <tr><td>Development</td><td>Local debugging; short timeouts; verbose logging</td></tr>
+  <tr><td>Production</td><td>Normal production; longer timeouts; quiet logging</td></tr>
+  <tr><td>AirGapped</td><td>Isolated networks; sequential; fingerprint off; 24h cache</td></tr>
+</table>
+
+<h3>3. Per-profile checklists</h3>
+<h4>Development</h4>
+<ul>
+  <li>ASPNETCORE_ENVIRONMENT=Development</li>
+  <li>Confirm short timeouts acceptable</li>
+  <li>Expect verbose + raw output logs</li>
+  <li>Cache TTL = 5 minutes</li>
+</ul>
+<h4>Production</h4>
+<ul>
+  <li>ASPNETCORE_ENVIRONMENT=Production</li>
+  <li>Confirm storage path</li>
+  <li>Max scan duration 120 min OK</li>
+  <li>Fingerprint + freshness enabled</li>
+  <li>Logging Warning/Error only</li>
+</ul>
+<h4>AirGapped</h4>
+<ul>
+  <li>ASPNETCORE_ENVIRONMENT=AirGapped</li>
+  <li>No external network dependency required for scanning</li>
+  <li>Accept sequential execution</li>
+  <li>Fingerprint validation disabled by design</li>
+  <li>Long timeouts and 24h cache</li>
+</ul>
+
+<h3>4. Post-deployment verification</h3>
+<ol>
+  <li>Startup shows <code>Catalog Integrity Validation: PASSED</code></li>
+  <li>Run Full scan</li>
+  <li>Findings count equals registered check count (22 checks registered in Program.cs)</li>
+  <li>Optional: inspect process cache stats after second scan</li>
+  <li>Review adaptive profile reasoning for unexpected skips</li>
+</ol>
+
+<h3>5. Rollback procedure</h3>
+<ol>
+  <li>Stop process</li>
+  <li>Redeploy previous known-good binaries</li>
+  <li>Restore storage path if needed</li>
+  <li>Restore previous ASPNETCORE_ENVIRONMENT</li>
+  <li>Start and confirm catalog validation</li>
+</ol>
+
+<h3>6. Security notes</h3>
+<ul>
+  <li>Admin required only for remediation / registry writes; scan-only can run non-elevated.</li>
+  <li>AirGapped profile does not introduce external network calls for scanning.</li>
+  <li>ProcessRunner uses UseShellExecute=false, CreateNoWindow=true; errors returned in ProcessResult.</li>
+</ul>
+
+<div class="part-break">
+<h2>PART 3 — PHASE 15 PLANNING</h2>
+</div>
+
+<h3>1. Carry-over debt</h3>
+<p>Exact per-project counts are committed in Appendix A of this document (captured 2026-09-13). Phase 15 Track B must re-capture counts after each cleanup commit and update Appendix A accordingly. Known categories:</p>
+<table>
+  <tr><th>Category</th><th>Typical location</th><th>Notes</th></tr>
+  <tr><td>CA1416</td><td>RemediationService / Windows APIs</td><td>Platform-specific; annotate SupportedOSPlatform</td></tr>
+  <tr><td>CS8618</td><td>Domain entities</td><td>Non-nullable without definite assignment</td></tr>
+  <tr><td>CS8604</td><td>Evaluators / parsers</td><td>Possible null arguments</td></tr>
+  <tr><td>CS1998</td><td>Async without await</td><td>Collector helpers</td></tr>
+  <tr><td>CS8625</td><td>WindowsHardeningScanner</td><td>Nullable reference issues</td></tr>
+</table>
+<p>Phase 15 action: capture exact counts via <code>dotnet build</code> on a clean machine.</p>
+
+<h3>2. Candidate tracks</h3>
+<ul>
+  <li><strong>A. UI/UX</strong> — real-time progress, finding explorer, remediation workflow, snapshot comparison</li>
+  <li><strong>B. Code Quality & Warning Cleanup</strong> — CA1416/CS8618/CS8604/CS1998/CS8625 + XML docs</li>
+  <li><strong>C. Check Metadata System</strong> — move tool requirements / duration out of hardcoded AdaptiveExecutionEngine dictionary; migrate remaining private <code>Process.Start</code> consumers (<code>PasswordLengthCheck</code>, <code>UserRightsCheck</code>, and any other check still using a private RunCommandAsync helper) to <code>IProcessCacheService</code>, so ALL external command execution flows through the caching layer</li>
+  <li><strong>D. Advanced Features</strong> — multi-host, scheduled scans, trending</li>
+</ul>
+
+<h3>3. Recommended order: B → C → A → D</h3>
+<ol>
+  <li><strong>B first</strong> — reduce noise and risk before structural changes; measurable via zero target warnings in CI.</li>
+  <li><strong>C second</strong> — unblocks accurate adaptive decisions without hardcoding; prepares engine for new checks.</li>
+  <li><strong>A third</strong> — UI benefits from stable engine contracts and metadata.</li>
+  <li><strong>D last</strong> — depends on solid core, persistence (Phase 13), and adaptive engine (Phase 14).</li>
+</ol>
+
+<h3>4. Success criteria</h3>
+<table>
+  <tr><th>Track</th><th>Criteria</th></tr>
+  <tr><td>B</td><td>0 warnings in listed categories; 189 tests green</td></tr>
+  <tr><td>C</td><td>Hardcoded CheckToolRequirements removed; metadata-driven skips tested; 189+ tests green</td></tr>
+  <tr><td>A</td><td>Live progress, finding detail, remediation path, snapshot diff present</td></tr>
+  <tr><td>D</td><td>At least one multi-host or scheduled path behind feature flag with deterministic tests</td></tr>
+</table>
+
+<h3>Appendix A — Exact compiler-warning inventory</h3>
+<p>Captured from a clean <code>dotnet build ISCM.sln</code> log on 2026-09-13 (Shamsi: 1405-06-22), branch epic/phase14-engine-boundary:</p>
+<table>
+  <tr><th>Project</th><th>Count</th><th>Categories</th></tr>
+  <tr><td>ISCM.Domain</td><td>10</td><td>CS8618 ×10 (CatalogCoverageReport ×7, ControlResult ×2, ScanResult ×1)</td></tr>
+  <tr><td>ISCM.Application</td><td>25</td><td>CA1416 ×19 (RemediationService), CS8604 ×4 (ControlEvaluator ×1, TypedEvidenceEvaluator ×1, ComparisonEngine ×2), CS1998 ×2 (EvidenceAcquisitionService)</td></tr>
+  <tr><td>ISCM.Infrastructure</td><td>1</td><td>CS8625 ×1 (WindowsHardeningScanner line 162)</td></tr>
+  <tr><td>ISCM.Tests</td><td>1</td><td>CS1998 ×1 (ProcessCachingTests line 253)</td></tr>
+  <tr><td><strong>Total</strong></td><td><strong>37</strong></td><td></td></tr>
+</table>
+
+<hr>
+<p><em>End of Phase 14.6 Documentation & Handover. All behavioral claims verified against source files on branch epic/phase14-engine-boundary.</em></p>
+
+</body>
+</html>
