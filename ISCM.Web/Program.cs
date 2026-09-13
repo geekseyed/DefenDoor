@@ -191,8 +191,17 @@ builder.Services.AddSingleton<IAgreementPolicy, DefaultAgreementPolicy>();
 // 9.3: SubControlAggregationService
 builder.Services.AddSingleton<SubControlAggregationService>();
 
-// Phase 5: Scanner Configuration
-builder.Services.AddSingleton<IScannerConfigurationService, ScannerConfigurationService>();
+// ═══════════════════════════════════════════════════════════
+// Phase 14.4: Configuration Profiles
+// ScannerConfigurationService now reads from appsettings.json
+// "Scanner" section. Environment-specific overrides are applied
+// automatically by ASP.NET Core configuration system.
+// ═══════════════════════════════════════════════════════════
+builder.Services.AddSingleton<IScannerConfigurationService>(sp =>
+{
+    var configuration = sp.GetRequiredService<IConfiguration>();
+    return new ScannerConfigurationService(configuration);
+});
 
 // ═══════════════════════════════════════════════════════════
 // Phase 13.6: Decorator Pattern for Persistence

@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\ISCM.Domain\ISCM.Domain.csproj" />
+    <PackageReference Include="Microsoft.Extensions.Configuration.Abstractions" Version="8.0.0" />
   </ItemGroup>
 
   <ItemGroup>
