@@ -6,9 +6,11 @@
 @using ISCM.Domain.Enums
 @using ISCM.Web.Services
 @using System.Globalization
+@using Microsoft.AspNetCore.Components.Forms
 @inject IReportService ReportService
 @inject ISnapshotDiffEngine DiffEngine
 @inject ISnapshotRepository SnapshotRepository
+@inject ISnapshotExportService ExportService
 @inject ScanStateService StateService
 @inject ScanHistoryService HistoryService
 @inject ReportGateService GateService
@@ -44,7 +46,7 @@
         text-decoration: none;
         font-size: 12px;
     }
-    /* ── زیرتب‌ها ── */
+
     .subtab-bar {
         display: flex;
         gap: 8px;
@@ -107,7 +109,7 @@
         padding: 16px;
         margin-bottom: 16px;
     }
-    /* ── Report Types (3) ── */
+
     .type-grid {
         display: grid;
         grid-template-columns: repeat(3, 1fr);
@@ -187,7 +189,7 @@
             background: rgba(6,182,212,0.15);
             color: #06b6d4;
         }
-    /* ── Context ── */
+
     .ctx-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -280,7 +282,7 @@
         border-radius: 6px;
         cursor: pointer;
     }
-    /* ── Sections / Options ── */
+
     .sections-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -443,7 +445,7 @@
         padding: 40px;
         font-size: 13px;
     }
-    /* ── Phase 15.4: Snapshot Comparison Styles ── */
+
     .compare-selector {
         display: grid;
         grid-template-columns: 1fr auto 1fr auto;
@@ -604,17 +606,9 @@
         font-size: 11px;
     }
 
-    .diff-old {
-        color: #ef4444;
-    }
-
-    .diff-new {
-        color: #10b981;
-    }
-
-    .diff-arrow {
-        color: #64748b;
-    }
+    .diff-old { color: #ef4444; }
+    .diff-new { color: #10b981; }
+    .diff-arrow { color: #64748b; }
 
     .diff-reason {
         color: #94a3b8;
@@ -622,6 +616,133 @@
         margin-top: 4px;
         font-style: italic;
     }
+
+    .export-import-bar {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        margin-bottom: 16px;
+        flex-wrap: wrap;
+    }
+
+    .btn-export {
+        background: linear-gradient(45deg, #06b6d4, #3b82f6);
+        border: none;
+        color: white;
+        font-weight: bold;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+    }
+
+    .btn-import {
+        background: linear-gradient(45deg, #10b981, #059669);
+        border: none;
+        color: white;
+        font-weight: bold;
+        padding: 8px 16px;
+        border-radius: 6px;
+        cursor: pointer;
+        font-size: 11px;
+    }
+
+    .btn-export-small {
+        background: #1e293b;
+        border: 1px solid #334155;
+        color: #06b6d4;
+        font-size: 10px;
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+        .btn-export-small:hover {
+            border-color: #06b6d4;
+            background: rgba(6, 182, 212, 0.1);
+        }
+
+    .btn-export-small:disabled {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+
+    .import-results {
+        margin-top: 16px;
+    }
+
+    .import-result-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 12px;
+        background: rgba(15, 23, 42, 0.8);
+        border: 1px solid #334155;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        font-size: 11px;
+    }
+
+    .import-result-item.success { border-left: 3px solid #10b981; }
+    .import-result-item.duplicate { border-left: 3px solid #f59e0b; }
+    .import-result-item.error { border-left: 3px solid #ef4444; }
+
+    .import-result-icon { font-size: 14px; }
+
+    .import-result-file {
+        color: #06b6d4;
+        font-family: 'Consolas', monospace;
+        flex: 1;
+    }
+
+    .import-result-message { color: #94a3b8; }
+
+    .import-result-status {
+        font-weight: bold;
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 3px;
+    }
+
+    .status-success { background: rgba(16,185,129,0.2); color: #10b981; }
+    .status-duplicate { background: rgba(245,158,11,0.2); color: #f59e0b; }
+    .status-invalid, .status-failed, .status-integrityfailed { background: rgba(239,68,68,0.2); color: #ef4444; }
+
+    .file-input-hidden { display: none; }
+
+    .compliance-table-wrap {
+        margin-top: 12px;
+        overflow-x: auto;
+    }
+
+    .compliance-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 11px;
+    }
+
+        .compliance-table th {
+            background: #0f172a;
+            color: #94a3b8;
+            text-transform: uppercase;
+            font-size: 10px;
+            letter-spacing: 1px;
+            padding: 8px 10px;
+            text-align: left;
+            border-bottom: 1px solid #334155;
+        }
+
+        .compliance-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(51,65,85,0.4);
+            color: #e2e8f0;
+        }
+
+        .compliance-table code {
+            color: #06b6d4;
+            font-family: 'Consolas', monospace;
+            font-size: 10px;
+        }
 </style>
 
 <div class="glass-panel">
@@ -630,7 +751,6 @@
         <a href="/" class="btn-back">← Back to Dashboard</a>
     </div>
 
-    @* ── نوار زیرتب‌ها ── *@
     <div class="subtab-bar">
         @foreach (var t in SubTabs)
         {
@@ -640,13 +760,12 @@
         }
     </div>
 
-    @if (StateService.CurrentScanResult == null && ActiveSubTab != "baseline")
+    @if (StateService.CurrentScanResult == null && ActiveSubTab != "baseline" && ActiveSubTab != "ledger")
     {
         <p class="empty-state">No scan data available for reporting. Please run a scan from the Dashboard first.</p>
     }
     else if (ActiveSubTab == "generator")
     {
-        @* ── تب Generator ── *@
         <div class="panel">
             <div class="section-title">Report Type</div>
             <div class="section-sub">نوع گزارش را انتخاب کنید</div>
@@ -746,7 +865,6 @@
     }
     else if (ActiveSubTab == "beforeafter")
     {
-        @* ── Phase 15.4: Snapshot Comparison Viewer ── *@
         <div class="panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
                 <div>
@@ -763,7 +881,7 @@
                         <option value="">-- Select Source --</option>
                         @foreach (var entry in SnapshotHistory)
                         {
-                            <option value="@entry.SnapshotId">@entry.Hostname | @entry.ScanTime.ToString("yyyy-MM-dd HH:mm") | @entry.Grade (@entry.ComplianceScore%)</option>
+                            <option value="@entry.SnapshotId">@entry.Hostname | @(entry.ScanTime.ToString("yyyy-MM-dd HH:mm")) | @entry.Grade (@entry.ComplianceScore%)</option>
                         }
                     </select>
                 </div>
@@ -776,7 +894,7 @@
                         <option value="">-- Select Target --</option>
                         @foreach (var entry in SnapshotHistory)
                         {
-                            <option value="@entry.SnapshotId">@entry.Hostname | @entry.ScanTime.ToString("yyyy-MM-dd HH:mm") | @entry.Grade (@entry.ComplianceScore%)</option>
+                            <option value="@entry.SnapshotId">@entry.Hostname | @(entry.ScanTime.ToString("yyyy-MM-dd HH:mm")) | @entry.Grade (@entry.ComplianceScore%)</option>
                         }
                     </select>
                 </div>
@@ -881,7 +999,6 @@
     }
     else if (ActiveSubTab == "system")
     {
-        @* ── تب System & Context ── *@
         <div class="panel">
             <div style="display:flex; justify-content:space-between; align-items:center;">
                 <div>
@@ -929,7 +1046,6 @@
     }
     else if (ActiveSubTab == "baseline")
     {
-        @* ── تب Baseline (مرحله ۳) ── *@
         <div class="panel">
             <div class="section-title">Baseline Configuration</div>
             <div class="section-sub">ویرایش مقادیر Expected و فعال/غیرفعال کردن چک‌ها — به نام Madanchi</div>
@@ -938,34 +1054,129 @@
     }
     else if (ActiveSubTab == "ledger")
     {
-        @* ── تب Report Ledger ── *@
         <div class="panel">
-            <div class="section-title">Report Ledger</div>
-            <div class="section-sub">بایگانی گزارش‌های تولیدشده توسط کنترلر Gate</div>
-            @if (GateService.Ledger.Count == 0)
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+                <div>
+                    <div class="section-title" style="margin-bottom:2px;">Report Ledger & Snapshot Archive</div>
+                    <div class="section-sub">بایگانی گزارش‌ها و مدیریت Snapshotها (Export/Import برای محیط‌های AirGapped)</div>
+                </div>
+            </div>
+
+            <div class="export-import-bar">
+                <button class="btn-import" @onclick="TriggerImportFileDialog" disabled="@_isImporting">
+                    @(_isImporting ? "⏳ Importing..." : "📥 Import Snapshots")
+                </button>
+                <InputFile OnChange="OnFilesSelected" multiple class="file-input-hidden" @ref="_fileInput" />
+                <span style="color: #64748b; font-size: 11px;">
+                    Import .defendoor.json files from AirGapped environments
+                </span>
+            </div>
+
+            @if (_importResults.Any())
             {
-                <p class="empty-state">No reports generated yet.</p>
+                <div class="import-results">
+                    <div class="section-title" style="margin-bottom: 8px;">Import Results</div>
+                    @foreach (var result in _importResults)
+                    {
+                        <div class="import-result-item @result.Status.ToString().ToLower()">
+                            <span class="import-result-icon">@(result.Status switch {
+                                SnapshotImportStatus.Success => "✅",
+                                SnapshotImportStatus.Duplicate => "⚠️",
+                                _ => "❌"
+                            })</span>
+                            <span class="import-result-file">@result.FileName</span>
+                            <span class="import-result-message">@result.Message</span>
+                            <span class="import-result-status status-@result.Status.ToString().ToLower()">@result.Status</span>
+                        </div>
+                    }
+                    <button class="btn-secondary" style="margin-top: 10px; padding: 6px 12px; font-size: 11px;" @onclick="ClearImportResults">Clear Results</button>
+                </div>
+            }
+
+            <div class="section-title" style="margin-top: 20px;">Generated Reports</div>
+            @if (GateService.Ledger.Count == 0 && SnapshotHistory.Count == 0)
+            {
+                <p class="empty-state">No reports or snapshots generated yet.</p>
             }
             else
             {
                 <div class="compliance-table-wrap">
                     <table class="compliance-table">
-                        <thead><tr><th>#</th><th>Type</th><th>Format</th><th>File Name</th><th>Generated At</th><th>State Signature</th></tr></thead>
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Type</th>
+                                <th>Format</th>
+                                <th>File Name</th>
+                                <th>Generated At</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
                         <tbody>
                             @foreach (var e in GateService.Ledger)
                             {
                                 <tr>
-                                    <td><code>R-@e.Seq.ToString("D3")</code></td>
+                                    <td><code>R-@(e.Seq.ToString("D3"))</code></td>
                                     <td>@e.ReportType</td>
                                     <td>@e.Format.ToUpper()</td>
-                                    <td class="src-cell">@e.FileName</td>
-                                    <td class="src-cell">@e.GeneratedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm")</td>
-                                    <td class="src-cell">@e.StateSignature.Substring(0, 8)…</td>
+                                    <td style="color: #06b6d4; font-family: monospace; font-size: 10px;">@e.FileName</td>
+                                    <td style="color: #64748b; font-family: monospace; font-size: 10px;">@(e.GeneratedAt.LocalDateTime.ToString("yyyy-MM-dd HH:mm"))</td>
+                                    <td>
+                                        <button class="btn-export-small" disabled title="Export from file system">📄 View File</button>
+                                    </td>
                                 </tr>
                             }
                         </tbody>
                     </table>
                 </div>
+
+                <div class="section-title" style="margin-top: 20px;">Snapshot Archive (Export for AirGapped)</div>
+                <div class="compliance-table-wrap">
+                    <table class="compliance-table">
+                        <thead>
+                            <tr>
+                                <th>Snapshot ID</th>
+                                <th>Hostname</th>
+                                <th>Date</th>
+                                <th>Grade</th>
+                                <th>Score</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var snapshot in SnapshotHistory)
+                            {
+                                <tr>
+                                    <td><code>@(snapshot.SnapshotId?.ToString("N").Substring(0, 8) ?? "N/A")</code></td>
+                                    <td>@snapshot.Hostname</td>
+                                    <td style="color: #64748b; font-family: monospace; font-size: 10px;">@(snapshot.ScanTime.ToString("yyyy-MM-dd HH:mm"))</td>
+                                    <td>@snapshot.Grade</td>
+                                    <td>@snapshot.ComplianceScore%</td>
+                                    <td>
+                                        <button class="btn-export-small"
+                                                @onclick="() => ExportSnapshotAsync(snapshot.SnapshotId)"
+                                                disabled="@(_exportingSnapshotId == snapshot.SnapshotId)">
+                                            @(_exportingSnapshotId == snapshot.SnapshotId ? "⏳ Exporting..." : "📤 Export")
+                                        </button>
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+
+                @if (!string.IsNullOrEmpty(_exportMessage))
+                {
+                    <div class="result-message" style="background: rgba(16,185,129,0.1); color: #10b981; margin-top: 12px;">
+                        ✅ @_exportMessage
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_exportError))
+                {
+                    <div class="result-message" style="background: rgba(239,68,68,0.1); color: #ef4444; margin-top: 12px;">
+                        ❌ @_exportError
+                    </div>
+                }
             }
         </div>
     }
@@ -995,7 +1206,7 @@
         ("beforeafter", "📈", "Before/After"),
         ("system", "🖥", "System & Context"),
         ("baseline", "📚", "Baseline"),
-        ("ledger", "🗂", "Report Ledger")
+        ("ledger", "🗂", "Ledger & Archive")
     };
 
     private static readonly List<(string Id, string Icon, string Name, string Desc)> ExportFormats = new()
@@ -1049,7 +1260,6 @@
 
     private int EstimatedPages => 4 + Sections.Count(s => s.Enabled) / 2;
 
-    // ── Gate: وضعیت فعلی کنترلر برای کارت Current State ──
     private GateDecision CurrentGate => GateService.EvaluateCurrentState(StateService.CurrentScanResult);
 
     private void SelectCurrentType()
@@ -1068,9 +1278,9 @@
     private SnapshotDiffResult? _diffResult;
     private string? _compareError;
 
-    private bool CanCompare => 
-        !string.IsNullOrEmpty(SelectedSourceId) && 
-        !string.IsNullOrEmpty(SelectedTargetId) && 
+    private bool CanCompare =>
+        !string.IsNullOrEmpty(SelectedSourceId) &&
+        !string.IsNullOrEmpty(SelectedTargetId) &&
         SelectedSourceId != SelectedTargetId;
 
     private async Task RefreshSnapshots()
@@ -1115,13 +1325,106 @@
         }
     }
 
-    // ── تولید گزارش با کنترلر Gate ──
+    // ── Phase 15.5: Export/Import State ──
+    private bool _isImporting;
+    private Guid? _exportingSnapshotId;
+    private List<SnapshotImportResult> _importResults = new();
+    private string? _exportMessage;
+    private string? _exportError;
+    private InputFile? _fileInput;
+
+    private void TriggerImportFileDialog()
+    {
+        _importResults.Clear();
+    }
+
+    private async Task OnFilesSelected(InputFileChangeEventArgs e)
+    {
+        _isImporting = true;
+        _importResults.Clear();
+        _exportMessage = null;
+        _exportError = null;
+
+        try
+        {
+            var files = e.GetMultipleFiles(10);
+            var filePaths = new List<string>();
+
+            foreach (var file in files)
+            {
+                var tempPath = System.IO.Path.Combine(System.IO.Path.GetTempPath(), file.Name);
+                using (var stream = file.OpenReadStream(maxAllowedSize: 50 * 1024 * 1024))
+                {
+                    using (var fileStream = System.IO.File.Create(tempPath))
+                    {
+                        await stream.CopyToAsync(fileStream);
+                    }
+                }
+                filePaths.Add(tempPath);
+            }
+
+            if (filePaths.Any())
+            {
+                var results = await ExportService.ImportMultipleAsync(filePaths, "Admin");
+                _importResults = results.ToList();
+
+                foreach (var path in filePaths)
+                {
+                    try { System.IO.File.Delete(path); } catch { }
+                }
+
+                await RefreshSnapshots();
+
+                StateService.LogAction($"Imported {_importResults.Count(r => r.Status == SnapshotImportStatus.Success)} snapshot(s), {_importResults.Count(r => r.Status == SnapshotImportStatus.Duplicate)} duplicate(s)");
+            }
+        }
+        catch (Exception ex)
+        {
+            _importResults.Add(SnapshotImportResult.Failed("batch", $"Import error: {ex.Message}"));
+        }
+        finally
+        {
+            _isImporting = false;
+        }
+    }
+
+    private async Task ExportSnapshotAsync(Guid? snapshotId)
+    {
+        if (snapshotId == null) return;
+
+        _exportingSnapshotId = snapshotId;
+        _exportMessage = null;
+        _exportError = null;
+
+        try
+        {
+            var outputDir = System.IO.Path.Combine(AppContext.BaseDirectory, "Exports");
+            var filePath = await ExportService.ExportSnapshotAsync(snapshotId.Value, outputDir, "Admin");
+
+            _exportMessage = $"Snapshot exported to: {filePath}";
+            StateService.LogAction($"Snapshot exported: {System.IO.Path.GetFileName(filePath)}");
+        }
+        catch (Exception ex)
+        {
+            _exportError = $"Export failed: {ex.Message}";
+        }
+        finally
+        {
+            _exportingSnapshotId = null;
+        }
+    }
+
+    private void ClearImportResults()
+    {
+        _importResults.Clear();
+    }
+
+    // ── Report Generation ──
     private async Task GenerateReportAsync()
     {
         var scan = StateService.CurrentScanResult;
         if (scan == null) { _errorMessage = "No scan data available."; return; }
 
-        // Gate برای Current State
         if (SelectedReportType == "current")
         {
             var decision = GateService.EvaluateCurrentState(scan);
@@ -1133,13 +1436,12 @@
             }
         }
 
-        // Before/After نیاز به ≥۲ اسکن
         if (SelectedReportType == "beforeafter")
         {
             var history = HistoryService?.History.ToList() ?? new List<ScanHistoryEntry>();
             if (history.Count < 2)
             {
-                _errorMessage = "Before/After report requires at least 2 scans in history. Run another scan after making changes.";
+                _errorMessage = "Before/After report requires at least 2 scans in history.";
                 _savedFilePath = null;
                 return;
             }
@@ -1169,9 +1471,8 @@
             }
             else
             {
-                // ثبت در Ledger + فعال‌سازی چک تغییر پس از اولین گزارش (هر فرمتی)
                 GateService.RecordReport(scan, SelectedReportType, SelectedFormat, _savedFilePath);
-                StateService.LogAction($"Report generated: type={SelectedReportType}, format={SelectedFormat}, file={System.IO.Path.GetFileName(_savedFilePath)}");
+                StateService.LogAction($"Report generated: type={SelectedReportType}, format={SelectedFormat}");
             }
         }
         catch (Exception ex)

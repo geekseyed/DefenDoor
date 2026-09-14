@@ -277,6 +277,16 @@ public class SqliteSnapshotRepository : ISnapshotRepository
             return false;
         }
     }
+    // ═══════════════════════════════════════════════════════════
+    // Phase 15.5: ExistsAsync - Duplicate detection for import
+    // ═══════════════════════════════════════════════════════════
+
+    public async Task<bool> ExistsAsync(Guid snapshotId, CancellationToken cancellationToken = default)
+    {
+        return await _dbContext.Snapshots
+            .AsNoTracking()
+            .AnyAsync(s => s.Id == snapshotId, cancellationToken);
+    }
 
     private async Task<ScanSnapshot> ReconstructSnapshotAsync(SnapshotRecord record, CancellationToken cancellationToken)
     {

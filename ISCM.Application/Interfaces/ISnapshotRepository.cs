@@ -103,4 +103,13 @@ public interface ISnapshotRepository
     /// </summary>
     /// <returns>True if repository is operational</returns>
     Task<bool> HealthCheckAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Phase 15.5: Checks if a snapshot with the given ID already exists.
+    /// Used for duplicate detection during import operations.
+    /// </summary>
+    /// <param name="snapshotId">The snapshot ID to check</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if a snapshot with this ID exists; false otherwise</returns>
+    Task<bool> ExistsAsync(Guid snapshotId, CancellationToken cancellationToken = default);
 }
