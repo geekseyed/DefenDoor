@@ -1,13 +1,13 @@
 ﻿using ISCM.Application.Interfaces;
 using ISCM.Domain.Entities;
 using ISCM.Domain.Enums;
+using ISCM.Domain.ValueObjects; // ← Added for Phase 15.1
 using Microsoft.Extensions.DependencyInjection;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text.Json;
 using System.Threading.Tasks;
-
 
 namespace ISCM.Web.Services;
 
@@ -46,6 +46,10 @@ public class ScanStateService
     public int LivePassCount { get; private set; }
     public int LiveFailCount { get; private set; }
 
+    // --- Phase 15.1: Real-time Dashboard State ---
+    public string? CurrentCheckId { get; private set; }
+    public string? CurrentCheckName { get; private set; }
+
     // --- Console / Event Log ---
     public IReadOnlyList<string> ConsoleLogs => _consoleLogs.AsReadOnly();
     public IReadOnlyList<string> EventLog => _activityLog.AsReadOnly();
@@ -71,14 +75,11 @@ public class ScanStateService
     public ScanResult? CurrentScanResult => _currentScanResult;
     public IReadOnlyList<string> ActivityLog => _activityLog.AsReadOnly();
 
-
-    // متد SetScanResult را به این شکل تغییر بده:
     public void SetScanResult(ScanResult result)
     {
         if (result == null) throw new ArgumentNullException(nameof(result));
 
         // Phase 13.6: Deep-clone to prevent mutation of persisted snapshot data
-        // Serialize and deserialize to create a completely independent copy
         try
         {
             var json = JsonSerializer.Serialize(result, new JsonSerializerOptions
@@ -93,7 +94,6 @@ public class ScanStateService
         }
         catch
         {
-            // Fallback: use original if serialization fails
             _currentScanResult = result;
         }
 
@@ -181,6 +181,7 @@ public class ScanStateService
         NotifyStateChanged();
     }
 
+    // Phase 15.1: Updated to use IProgress<ScanProgressUpdate>
     public async Task ExecuteScanAsync(ScanMode mode = ScanMode.Full)
     {
         if (IsScanning) return;
@@ -190,6 +191,8 @@ public class ScanStateService
         ExpectedChecks = 0;
         LivePassCount = 0;
         LiveFailCount = 0;
+        CurrentCheckId = null;
+        CurrentCheckName = null;
         _consoleLogs.Clear();
         _activityLog.Clear();
 
@@ -208,18 +211,18 @@ public class ScanStateService
             ExpectedChecks = scanService.TotalCheckCount;
             NotifyStateChanged();
 
-            var progress = new Progress<string>(msg =>
+            var progress = new Progress<ScanProgressUpdate>(update =>
             {
-                LogConsole(msg, msg.Contains("ERROR") ? "status-error" : "status-info");
+                LogConsole(update.LogMessage, update.LogMessage.Contains("ERROR") ? "status-error" : "status-info");
 
-                if (msg.Contains("[PASS]") || msg.Contains("[FAIL]") || msg.Contains("[UNKNOWN]") || msg.Contains("[ERROR]"))
-                {
-                    CompletedChecks++;
-                    if (msg.Contains("[PASS]")) LivePassCount++;
-                    else if (msg.Contains("[FAIL]")) LiveFailCount++;
+                CompletedChecks = update.CompletedChecks;
+                ExpectedChecks = update.TotalChecks;
+                LivePassCount = update.LivePassCount;
+                LiveFailCount = update.LiveFailCount;
+                CurrentCheckId = update.CurrentCheckId;
+                CurrentCheckName = update.CurrentCheckName;
 
-                    NotifyStateChanged();
-                }
+                NotifyStateChanged();
             });
 
             var result = await scanService.RunScanAsync(mode, progress);
@@ -234,6 +237,8 @@ public class ScanStateService
         finally
         {
             IsScanning = false;
+            CurrentCheckId = null;
+            CurrentCheckName = null;
             NotifyStateChanged();
         }
     }

@@ -682,7 +682,17 @@
             <span class="t-dot-green @(StateService.LastCheckResult?.Status == CheckStatus.Pass ? "pulse" : "")" @key="@($"g{_greenKey}")"></span>
         </div>
         <div class="terminal-title">DEFENDOOR.SCAN — @StateService.DisplayHostname</div>
-        <div class="terminal-chip @StateService.ConsoleStatusClass">@StateService.ConsoleStatusText</div>
+        
+        <!-- Phase 15.1: Display current running check ID during scan -->
+        @if (StateService.IsScanning && !string.IsNullOrEmpty(StateService.CurrentCheckName))
+        {
+            <div class="terminal-chip scanning">▶ @StateService.CurrentCheckId</div>
+        }
+        else
+        {
+            <div class="terminal-chip @StateService.ConsoleStatusClass">@StateService.ConsoleStatusText</div>
+        }
+
         <button class="btn-scan" @onclick="() => StateService.ExecuteScanAsync()" disabled="@StateService.IsScanning">
             @if (StateService.IsScanning)
             {

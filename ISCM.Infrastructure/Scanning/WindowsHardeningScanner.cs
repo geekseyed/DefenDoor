@@ -3,6 +3,7 @@ using ISCM.Application.Services;
 using ISCM.Application.Services.Agreement;
 using ISCM.Domain.Entities;
 using ISCM.Domain.Enums;
+using ISCM.Domain.ValueObjects; // ← Added for Phase 15.1
 using ISCM.Infrastructure.Scanning.Collectors;
 using System.Diagnostics;
 
@@ -16,6 +17,7 @@ namespace ISCM.Infrastructure.Scanning;
 /// Phase 11.5: Simplified to collector-only pattern.
 /// Phase 12.11: Parallel execution via Parallel.ForEachAsync with configurable concurrency.
 /// Phase 13.1: ScanId unified between ScanContext and ScanResult.
+/// Phase 15.1: Upgraded to structured IProgress<ScanProgressUpdate> for real-time UI dashboard.
 /// </summary>
 public class WindowsHardeningScanner : IScanService
 {
@@ -62,13 +64,19 @@ public class WindowsHardeningScanner : IScanService
 
     public int TotalCheckCount => _checks.Count();
 
-    public async Task<ScanResult> RunScanAsync(ScanMode mode = ScanMode.Full, IProgress<string>? progress = null)
+    public async Task<ScanResult> RunScanAsync(ScanMode mode = ScanMode.Full, IProgress<ScanProgressUpdate>? progress = null)
     {
-        progress?.Report("[INFO] DefenDoor Scanner initialized");
+        // Phase 15.1: Thread-safe counters for parallel execution
+        int completedChecks = 0;
+        int livePassCount = 0;
+        int liveFailCount = 0;
+        var lockObj = new object();
+
+        progress?.Report(new ScanProgressUpdate("[INFO] DefenDoor Scanner initialized", ScanProgressStage.Initializing, 0, TotalCheckCount, 0, 0));
         await Task.Delay(100);
 
         var defaultBaseline = _baselineService.GetDefaultBaseline();
-        progress?.Report($"[INFO] Loading baseline: {defaultBaseline.Name} v{defaultBaseline.Version} ({TotalCheckCount} rules)");
+        progress?.Report(new ScanProgressUpdate($"[INFO] Loading baseline: {defaultBaseline.Name} v{defaultBaseline.Version} ({TotalCheckCount} rules)", ScanProgressStage.Initializing, 0, TotalCheckCount, 0, 0));
         await Task.Delay(50);
 
         var (hostname, ipAddress, macAddress, osVersion, osBuild) = _systemInfoCollector.Collect();
@@ -78,9 +86,6 @@ public class WindowsHardeningScanner : IScanService
 
         // ═══════════════════════════════════════════════════════════
         // Phase 13.1 FIX: Inject scanContext.ScanId into ScanResult
-        // to guarantee traceability across all Evidence items.
-        // Previously ScanResult generated its own ScanId, causing
-        // ScanResult.ScanId != Evidence.ScanId.
         // ═══════════════════════════════════════════════════════════
         var scanResult = new ScanResult(
             hostname,
@@ -91,22 +96,21 @@ public class WindowsHardeningScanner : IScanService
             mode,
             targetId: hostname,
             scannerVersion: scanContext.ScannerVersion,
-            scanId: scanContext.ScanId)  // ← Phase 13.1: Unified ScanId
+            scanId: scanContext.ScanId)
         {
             BaselineId = defaultBaseline.BaselineId
         };
 
-        progress?.Report($"[INFO] Scan started: ScanId={scanContext.ScanId}");
-        progress?.Report($"[INFO] Collecting system info... Hostname: {hostname}, IP: {ipAddress}");
-        progress?.Report("[INFO] Collector: RegistryReader - reading HKLM policies...");
+        progress?.Report(new ScanProgressUpdate($"[INFO] Scan started: ScanId={scanContext.ScanId}", ScanProgressStage.CollectingSystemInfo, 0, TotalCheckCount, 0, 0));
+        progress?.Report(new ScanProgressUpdate($"[INFO] Collecting system info... Hostname: {hostname}, IP: {ipAddress}", ScanProgressStage.CollectingSystemInfo, 0, TotalCheckCount, 0, 0));
+        progress?.Report(new ScanProgressUpdate("[INFO] Collector: RegistryReader - reading HKLM policies...", ScanProgressStage.CollectingSystemInfo, 0, TotalCheckCount, 0, 0));
         await Task.Delay(100);
 
         // ═══════════════════════════════════════════════════════════
         // Phase 12.11: Parallel Execution
         // ═══════════════════════════════════════════════════════════
         var maxParallelism = _configService.GetMaxDegreeOfParallelism();
-        var lockObj = new object();
-        progress?.Report($"[INFO] Parallel scan: MaxDegreeOfParallelism = {maxParallelism}");
+        progress?.Report(new ScanProgressUpdate($"[INFO] Parallel scan: MaxDegreeOfParallelism = {maxParallelism}", ScanProgressStage.ExecutingChecks, 0, TotalCheckCount, 0, 0));
 
         var parallelOptions = new ParallelOptions
         {
@@ -115,6 +119,13 @@ public class WindowsHardeningScanner : IScanService
 
         await Parallel.ForEachAsync(_checks, parallelOptions, async (check, cancellationToken) =>
         {
+            // Phase 15.1: Report check start with current check info
+            progress?.Report(new ScanProgressUpdate(
+                $"[INFO] Executing {check.CheckId}: {check.Name}",
+                ScanProgressStage.ExecutingChecks,
+                completedChecks, TotalCheckCount, livePassCount, liveFailCount,
+                check.CheckId, check.Name));
+
             await Task.Delay(50, cancellationToken);
 
             try
@@ -140,10 +151,19 @@ public class WindowsHardeningScanner : IScanService
 
                 var finding = _controlEvaluator.EvaluateFromSubControls(controlDefinition, subControlResults, check.CheckId);
 
+                // Phase 15.1: Thread-safe update of counters and progress
                 lock (lockObj)
                 {
                     scanResult.AddFinding(finding);
-                    progress?.Report(BuildResultLine(finding));
+                    completedChecks++;
+                    if (finding.Status == CheckStatus.Pass) livePassCount++;
+                    else if (finding.Status == CheckStatus.Fail) liveFailCount++;
+
+                    progress?.Report(new ScanProgressUpdate(
+                        BuildResultLine(finding),
+                        ScanProgressStage.ExecutingChecks,
+                        completedChecks, TotalCheckCount, livePassCount, liveFailCount,
+                        finding.CheckId, finding.Name));
                 }
             }
             catch (Exception ex)
@@ -171,36 +191,36 @@ public class WindowsHardeningScanner : IScanService
                 lock (lockObj)
                 {
                     scanResult.AddFinding(errorFinding);
-                    progress?.Report($"[ERROR] {check.CheckId}: {check.Name} = Crash ({ex.Message})");
+                    completedChecks++;
+                    progress?.Report(new ScanProgressUpdate(
+                        $"[ERROR] {check.CheckId}: {check.Name} = Crash ({ex.Message})",
+                        ScanProgressStage.ExecutingChecks,
+                        completedChecks, TotalCheckCount, livePassCount, liveFailCount,
+                        check.CheckId, check.Name));
                 }
             }
         });
 
-        progress?.Report("[INFO] Finalizing scan and calculating compliance score...");
+        progress?.Report(new ScanProgressUpdate("[INFO] Finalizing scan and calculating compliance score...", ScanProgressStage.Finalizing, completedChecks, TotalCheckCount, livePassCount, liveFailCount));
         await Task.Delay(100);
 
         scanResult.CompleteScan();
         scanContext.MarkCompleted();
+
+        progress?.Report(new ScanProgressUpdate("[INFO] Scan completed successfully.", ScanProgressStage.Completed, completedChecks, TotalCheckCount, livePassCount, liveFailCount));
 
         return scanResult;
     }
 
     /// <summary>
     /// Runs the collector-only path for IEvidenceCollector checks.
-    ///
-    /// Flow:
-    ///   1. Call CollectEvidenceAsync() to get raw Evidence list
-    ///   2. Group evidence by SubControlId
-    ///   3. Convert each group to SubControlResult
-    ///   4. Validate path capability
-    ///   5. Call EvaluateSubControlTyped with catalog metadata
     /// </summary>
     private async Task<List<SubControlResult>> RunCollectorOnlyPath(
         IEvidenceCollector collector,
         ControlDefinition controlDefinition,
         ScanContext scanContext,
         string hostname,
-        IProgress<string>? progress)
+        IProgress<ScanProgressUpdate>? progress) // ← Phase 15.1: Updated type
     {
         var checkId = collector.CollectorId;
 
@@ -208,7 +228,10 @@ public class WindowsHardeningScanner : IScanService
 
         if (evidenceList == null || evidenceList.Count == 0)
         {
-            progress?.Report($"[WARNING] {checkId}: Collector returned no evidence");
+            // Phase 15.1: Structured progress update
+            progress?.Report(new ScanProgressUpdate(
+                $"[WARNING] {checkId}: Collector returned no evidence",
+                ScanProgressStage.ExecutingChecks, 0, 0, 0, 0));
             return new List<SubControlResult>();
         }
 
@@ -257,7 +280,10 @@ public class WindowsHardeningScanner : IScanService
 
                     if (!capabilityReport.IsValid)
                     {
-                        progress?.Report($"[WARNING] {subControlId}: Path capability issues: {string.Join(", ", capabilityReport.Errors)}");
+                        // Phase 15.1: Structured progress update
+                        progress?.Report(new ScanProgressUpdate(
+                            $"[WARNING] {subControlId}: Path capability issues: {string.Join(", ", capabilityReport.Errors)}",
+                            ScanProgressStage.ExecutingChecks, 0, 0, 0, 0));
                     }
                 }
 
@@ -275,7 +301,10 @@ public class WindowsHardeningScanner : IScanService
                     catch (Exception evalEx)
                     {
                         subResult.Status = CheckStatus.Error;
-                        progress?.Report($"[ERROR] {subControlId}: Typed evaluation failed: {evalEx.Message}");
+                        // Phase 15.1: Structured progress update
+                        progress?.Report(new ScanProgressUpdate(
+                            $"[ERROR] {subControlId}: Typed evaluation failed: {evalEx.Message}",
+                            ScanProgressStage.ExecutingChecks, 0, 0, 0, 0));
                     }
                 }
                 else

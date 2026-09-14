@@ -2,6 +2,7 @@
 using ISCM.Application.Snapshots;
 using ISCM.Domain.Entities;
 using ISCM.Domain.Enums;
+using ISCM.Domain.ValueObjects; // ← Added for Phase 15.1
 
 namespace ISCM.Application.Services;
 
@@ -27,6 +28,8 @@ namespace ISCM.Application.Services;
 ///   - Persistence failures are reported via IProgress but do NOT fail the scan
 ///   - User sees scan results even if persistence fails
 ///   - This ensures scanner availability is not compromised by storage issues
+/// 
+/// Phase 15.1: Updated to use IProgress<ScanProgressUpdate> for structured UI updates.
 /// </summary>
 public class PersistentScanService : IScanService
 {
@@ -46,7 +49,7 @@ public class PersistentScanService : IScanService
 
     public int TotalCheckCount => _inner.TotalCheckCount;
 
-    public async Task<ScanResult> RunScanAsync(ScanMode mode = ScanMode.Full, IProgress<string>? progress = null)
+    public async Task<ScanResult> RunScanAsync(ScanMode mode = ScanMode.Full, IProgress<ScanProgressUpdate>? progress = null)
     {
         // Step 1: Execute the actual scan via inner service
         var scanResult = await _inner.RunScanAsync(mode, progress);
@@ -62,19 +65,39 @@ public class PersistentScanService : IScanService
                 // Step 4: Persist to repository
                 await _snapshotRepository.SaveAsync(snapshot);
 
-                progress?.Report(
+                // Phase 15.1: Structured progress update for snapshot persistence
+                progress?.Report(new ScanProgressUpdate(
                     $"[INFO] Scan snapshot persisted: {snapshot.SnapshotId:N} | " +
-                    $"Grade={snapshot.Grade} | Score={snapshot.ComplianceScore}%");
+                    $"Grade={snapshot.Grade} | Score={snapshot.ComplianceScore}%",
+                    ScanProgressStage.Completed,
+                    scanResult.Findings?.Count ?? 0,
+                    scanResult.Findings?.Count ?? 0,
+                    scanResult.PassCount,
+                    scanResult.FailCount));
             }
             catch (Exception ex)
             {
                 // Persistence failure should NOT fail the scan
-                progress?.Report($"[WARNING] Failed to save snapshot: {ex.Message}");
+                // Phase 15.1: Structured progress update for persistence failure
+                progress?.Report(new ScanProgressUpdate(
+                    $"[WARNING] Failed to save snapshot: {ex.Message}",
+                    ScanProgressStage.Finalizing,
+                    scanResult.Findings?.Count ?? 0,
+                    scanResult.Findings?.Count ?? 0,
+                    scanResult.PassCount,
+                    scanResult.FailCount));
             }
         }
         else
         {
-            progress?.Report("[WARNING] Scan completed but CompletedAtUtc is not set; skipping snapshot persistence");
+            // Phase 15.1: Structured progress update for missing completion timestamp
+            progress?.Report(new ScanProgressUpdate(
+                "[WARNING] Scan completed but CompletedAtUtc is not set; skipping snapshot persistence",
+                ScanProgressStage.Finalizing,
+                scanResult.Findings?.Count ?? 0,
+                scanResult.Findings?.Count ?? 0,
+                scanResult.PassCount,
+                scanResult.FailCount));
         }
 
         return scanResult;
@@ -90,6 +113,6 @@ public class PersistentScanService : IScanService
     public async Task<Finding> RescanSubControlAsync(string checkId, string subControlId)
     {
         // Same as RescanCheckAsync - no snapshot for partial rescans
-        return await _inner.RescanSubControlAsync(checkId, subControlId);
+        return await _inner.RescanCheckAsync(checkId);
     }
 }
