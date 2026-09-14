@@ -17,7 +17,7 @@ namespace ISCM.Tests.Integration.Scanner;
 /// Phase 14.5: Portable integration tests for parallel scan execution.
 ///
 /// Uses concurrency tracking instead of timing assertions.
-/// IControlEvaluator is unconfigured mock - findings may be null (test artifact).
+/// IControlEvaluator is configured to return valid Finding objects.
 /// </summary>
 public class ParallelScanIntegrationTests
 {
@@ -112,10 +112,28 @@ public class ParallelScanIntegrationTests
         var mockConfig = new Mock<IScannerConfigurationService>();
         mockConfig.Setup(x => x.GetMaxDegreeOfParallelism()).Returns(maxDegreeOfParallelism);
 
+        // Phase 15.2 FIX: Configure mock evaluator to return a valid Finding instead of null
+        var mockEvaluator = new Mock<IControlEvaluator>();
+        mockEvaluator.Setup(x => x.EvaluateFromSubControls(
+                It.IsAny<ControlDefinition>(),
+                It.IsAny<List<SubControlResult>>(),
+                It.IsAny<string>()))
+            .Returns((ControlDefinition def, List<SubControlResult> results, string? checkId) =>
+                new Finding(
+                    checkId: checkId ?? def.ControlId,
+                    name: def.Title,
+                    category: def.Category,
+                    severity: def.Severity,
+                    status: CheckStatus.Pass,
+                    currentValue: "mock-value",
+                    expectedValue: "mock-expected",
+                    recommendation: "mock-recommendation"
+                ));
+
         return new WindowsHardeningScanner(
             systemInfoCollector,
             checks,
-            Mock.Of<IControlEvaluator>(),
+            mockEvaluator.Object,
             mockBaseline.Object,
             Mock.Of<IEvidenceAcquisitionService>(),
             Mock.Of<IScanFreshnessPolicy>(),
@@ -155,10 +173,10 @@ public class ParallelScanIntegrationTests
         // All 3 collectors ran to completion
         tracker.TotalEntries.Should().Be(3, "all 3 checks should have executed");
 
-        // ScanResult has 3 finding slots (even if null due to unconfigured evaluator mock)
+        // ScanResult has 3 findings
         result.Findings.Should().HaveCount(3);
 
-        // No collector crashed (crash findings are NON-NULL with Error status)
+        // No collector crashed
         result.Findings.Should().NotContain(
             f => f != null && f.Status == CheckStatus.Error);
     }

@@ -3,7 +3,7 @@ using ISCM.Application.Services;
 using ISCM.Application.Services.Agreement;
 using ISCM.Domain.Entities;
 using ISCM.Domain.Enums;
-using ISCM.Domain.ValueObjects; // ← Added for Phase 15.1
+using ISCM.Domain.ValueObjects;
 using ISCM.Infrastructure.Scanning.Collectors;
 using System.Diagnostics;
 
@@ -152,18 +152,32 @@ public class WindowsHardeningScanner : IScanService
                 var finding = _controlEvaluator.EvaluateFromSubControls(controlDefinition, subControlResults, check.CheckId);
 
                 // Phase 15.1: Thread-safe update of counters and progress
+                // Phase 15.2: Added null check for finding to handle misbehaving evaluators
                 lock (lockObj)
                 {
-                    scanResult.AddFinding(finding);
-                    completedChecks++;
-                    if (finding.Status == CheckStatus.Pass) livePassCount++;
-                    else if (finding.Status == CheckStatus.Fail) liveFailCount++;
+                    if (finding != null)
+                    {
+                        scanResult.AddFinding(finding);
+                        completedChecks++;
+                        if (finding.Status == CheckStatus.Pass) livePassCount++;
+                        else if (finding.Status == CheckStatus.Fail) liveFailCount++;
 
-                    progress?.Report(new ScanProgressUpdate(
-                        BuildResultLine(finding),
-                        ScanProgressStage.ExecutingChecks,
-                        completedChecks, TotalCheckCount, livePassCount, liveFailCount,
-                        finding.CheckId, finding.Name));
+                        progress?.Report(new ScanProgressUpdate(
+                            BuildResultLine(finding),
+                            ScanProgressStage.ExecutingChecks,
+                            completedChecks, TotalCheckCount, livePassCount, liveFailCount,
+                            finding.CheckId, finding.Name));
+                    }
+                    else
+                    {
+                        // Fallback for misbehaving evaluators (e.g. unconfigured mocks in tests)
+                        completedChecks++;
+                        progress?.Report(new ScanProgressUpdate(
+                            $"[WARNING] {check.CheckId}: Evaluator returned null finding",
+                            ScanProgressStage.ExecutingChecks,
+                            completedChecks, TotalCheckCount, livePassCount, liveFailCount,
+                            check.CheckId, check.Name));
+                    }
                 }
             }
             catch (Exception ex)
@@ -220,7 +234,7 @@ public class WindowsHardeningScanner : IScanService
         ControlDefinition controlDefinition,
         ScanContext scanContext,
         string hostname,
-        IProgress<ScanProgressUpdate>? progress) // ← Phase 15.1: Updated type
+        IProgress<ScanProgressUpdate>? progress)
     {
         var checkId = collector.CollectorId;
 

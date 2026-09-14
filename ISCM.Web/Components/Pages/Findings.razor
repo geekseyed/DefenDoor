@@ -498,29 +498,101 @@
         flex-shrink: 0;
     }
 
-    .sub-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 6px;
-        margin: 6px 0 10px 24px;
+    /* Phase 15.2: Tree View Styles */
+    .tree-view {
+        margin: 10px 0 10px 24px;
+        border-left: 2px solid #334155;
+        padding-left: 12px;
     }
 
-    .sub-row {
+    .tree-node {
+        margin-bottom: 8px;
+    }
+
+    .tree-branch {
+        margin-bottom: 6px;
+    }
+
+    .tree-branch-header {
         display: flex;
-        gap: 8px;
         align-items: center;
-        background: rgba(15,23,42,0.8);
+        gap: 8px;
+        padding: 8px 12px;
+        background: rgba(15, 23, 42, 0.8);
         border: 1px solid #334155;
         border-radius: 6px;
-        padding: 8px 10px;
         cursor: pointer;
         transition: 0.2s;
     }
 
-        .sub-row:hover {
+        .tree-branch-header:hover {
             border-color: #06b6d4;
-            background: rgba(6,182,212,0.06);
+            background: rgba(6, 182, 212, 0.06);
         }
+
+    .tree-icon {
+        color: #06b6d4;
+        font-family: 'Consolas', monospace;
+        font-size: 12px;
+        width: 12px;
+    }
+
+    .tree-leaves {
+        margin: 6px 0 6px 20px;
+        border-left: 1px dashed #475569;
+        padding-left: 12px;
+    }
+
+    .tree-leaf {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 6px 10px;
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid #1e293b;
+        border-radius: 4px;
+        margin-bottom: 4px;
+        cursor: pointer;
+        transition: 0.2s;
+        font-size: 11px;
+    }
+
+        .tree-leaf:hover {
+            border-color: #06b6d4;
+            background: rgba(6, 182, 212, 0.04);
+        }
+
+    .evidence-icon {
+        font-size: 10px;
+    }
+
+    .evidence-source {
+        color: #06b6d4;
+        font-family: 'Consolas', monospace;
+        font-size: 10px;
+        font-weight: bold;
+        min-width: 80px;
+    }
+
+    .evidence-value {
+        color: #e2e8f0;
+        font-family: 'Consolas', monospace;
+        font-size: 11px;
+        flex: 1;
+    }
+
+    .evidence-status {
+        font-size: 9px;
+        padding: 2px 6px;
+        border-radius: 3px;
+        font-weight: bold;
+    }
+
+    .evidence-lifecycle {
+        color: #64748b;
+        font-size: 9px;
+        font-family: 'Consolas', monospace;
+    }
 
     .subcheck-id {
         color: #06b6d4;
@@ -530,31 +602,19 @@
         flex-shrink: 0;
     }
 
-    .subcheck-main {
-        flex: 1;
-        min-width: 0;
-    }
-
     .subcheck-title {
         color: #e2e8f0;
         font-size: 11px;
         font-weight: bold;
     }
 
-    .subcheck-dest {
+    .evidence-count {
         color: #64748b;
         font-size: 9px;
-        margin-top: 2px;
+        margin-left: auto;
     }
 
-    .subcheck-expected {
-        color: #94a3b8;
-        font-size: 9px;
-        font-family: 'Consolas', monospace;
-        flex-shrink: 0;
-    }
-
-    /* ✅ Phase 4.4: استایل دکمه Remediate */
+    /* Phase 4.4: Remediate Button */
     .remediate-btn {
         background: #10b981;
         color: white;
@@ -575,7 +635,7 @@
             transform: translateY(-1px);
         }
 
-    /* ✅ Phase 4.4: استایل Modal */
+    /* Phase 4.4: Modal */
     .modal-overlay {
         position: fixed;
         top: 0;
@@ -710,7 +770,6 @@
         <button class="bulk-btn clear" @onclick="ClearSelection">Clear All</button>
     </div>
 
-    @* ✅ تغییر ب: بنر نوتیفیکیشن نتیجه Remediation *@
     @if (!string.IsNullOrEmpty(_remediationNotice))
     {
         <div style="@NoticeStyle padding:10px 14px; border-radius:6px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:bold;">
@@ -775,7 +834,6 @@
                             </button>
                         }
 
-                        @* ✅ Phase 4.4: دکمه Remediate برای Findings با وضعیت Fail *@
                         @if (parent.CalculatedStatus == CheckStatus.Fail)
                         {
                             var availableRemediations = parent.Definition.TechnicalCheckIds
@@ -794,26 +852,53 @@
                         }
                     </div>
 
+                    @* Phase 15.2: Tree View for Evidence *@
                     @if (isExpanded && parent.Findings.Any())
                     {
-                        <div class="sub-grid">
+                        <div class="tree-view">
                             @foreach (var finding in parent.Findings)
                             {
-                                var f = finding;
-                                <div class="sub-row" @onclick="() => OpenDrawer(f)">
-                                    <div class="subcheck-id">@f.CheckId</div>
-                                    <div class="subcheck-main">
-                                        <div class="subcheck-title">@f.Name</div>
-                                        <div class="subcheck-dest">@f.CurrentValue</div>
-                                    </div>
-                                    <div class="subcheck-expected">Expected: @f.ExpectedValue</div>
+                                var evidenceGroups = finding.Evidences
+                                    .GroupBy(e => e.SubControlId ?? finding.CheckId)
+                                    .ToList();
 
-                                    <button class="bulk-btn"
-                                            @onclick="() => RescanSubControl(parent.Definition.ControlId, f.CheckId)"
-                                            @onclick:stopPropagation="true"
-                                            title="Rescan this specific setting">
-                                        🔄
-                                    </button>
+                                <div class="tree-node">
+                                    @foreach (var group in evidenceGroups)
+                                    {
+                                        var subControlId = group.Key;
+                                        var evidences = group.ToList();
+                                        var subCheck = parent.AllSubChecks.FirstOrDefault(s => s.Id == subControlId);
+                                        var groupStatus = evidences.All(e => e.Evaluation == CheckStatus.Pass) ? CheckStatus.Pass
+                                                        : evidences.Any(e => e.Evaluation == CheckStatus.Fail) ? CheckStatus.Fail
+                                                        : evidences.Any(e => e.Evaluation == CheckStatus.Error) ? CheckStatus.Error
+                                                        : CheckStatus.Unknown;
+
+                                        <div class="tree-branch">
+                                            <div class="tree-branch-header" @onclick="() => ToggleSubControl(subControlId)">
+                                                <span class="tree-icon">@(IsSubControlExpanded(subControlId) ? "▾" : "▸")</span>
+                                                <span class="subcheck-id">@subControlId</span>
+                                                <span class="subcheck-title">@(subCheck?.Title ?? subControlId)</span>
+                                                <span class="status-@groupStatus.ToString().ToLower()">@groupStatus</span>
+                                                <span class="evidence-count">@evidences.Count evidence@(evidences.Count != 1 ? "s" : "")</span>
+                                            </div>
+
+                                            @if (IsSubControlExpanded(subControlId))
+                                            {
+                                                <div class="tree-leaves">
+                                                    @foreach (var evidence in evidences)
+                                                    {
+                                                        <div class="tree-leaf" @onclick="() => OpenEvidenceDrawer(finding, evidence)">
+                                                            <span class="evidence-icon">📄</span>
+                                                            <span class="evidence-source">@evidence.SourceType</span>
+                                                            <span class="evidence-value">@(evidence.NormalizedValue ?? evidence.ParsedValue ?? "N/A")</span>
+                                                            <span class="evidence-status status-@evidence.Evaluation.ToString().ToLower()">@evidence.Evaluation</span>
+                                                            <span class="evidence-lifecycle">@evidence.LifecycleState</span>
+                                                        </div>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    }
                                 </div>
                             }
                         </div>
@@ -824,7 +909,6 @@
     }
 </div>
 
-@* ✅ Phase 4.4: Modal Remediation *@
 @if (_showRemediationModal && _selectedRemediation != null)
 {
     <div class="modal-overlay">
@@ -903,15 +987,13 @@
         public List<SubCheck> AllSubChecks { get; set; } = new();
     }
 
-    // ✅ Phase 4.4: متغیرهای Modal Remediation
     private bool _showRemediationModal = false;
     private RemediationAction? _selectedRemediation;
     private ParentControlView? _selectedParent;
     private bool _isRemediating = false;
 
-    // ✅ تغییر الف: نوتیفیکیشن نتیجه Remediation
     private string? _remediationNotice;
-    private string _noticeKind = "warning"; // success | warning | error
+    private string _noticeKind = "warning";
 
     private string NoticeStyle => _noticeKind switch
     {
@@ -919,6 +1001,23 @@
         "error" => "background:rgba(239,68,68,0.12); border:1px solid rgba(239,68,68,0.5); color:#ef4444;",
         _ => "background:rgba(245,158,11,0.12); border:1px solid rgba(245,158,11,0.5); color:#f59e0b;"
     };
+
+    // Phase 15.2: Tree View state management
+    private HashSet<string> ExpandedSubControlIds = new();
+
+    private bool IsSubControlExpanded(string id) => ExpandedSubControlIds.Contains(id);
+
+    private void ToggleSubControl(string id)
+    {
+        if (!ExpandedSubControlIds.Add(id))
+            ExpandedSubControlIds.Remove(id);
+    }
+
+    private void OpenEvidenceDrawer(Finding finding, Evidence evidence)
+    {
+        SelectedFinding = finding;
+        SelectedSub = null;
+    }
 
     private List<ParentControlView> GetParentControls()
     {
@@ -1106,7 +1205,6 @@
         await StateService.RescanSubControlAsync(controlId, subControlId);
     }
 
-    // ✅ Phase 4.4: متد باز کردن Modal
     private void OpenRemediationModal(ParentControlView parent, RemediationAction remediation)
     {
         _selectedParent = parent;
@@ -1114,7 +1212,6 @@
         _showRemediationModal = true;
     }
 
-    // ✅ Phase 4.4: متد بستن Modal
     private void CloseRemediationModal()
     {
         _showRemediationModal = false;
@@ -1122,7 +1219,6 @@
         _selectedParent = null;
     }
 
-    // ✅ تغییر ج: متد اجرای Remediation با منطق تأیید / تذکر ری‌استارت / خطا
     private async Task ExecuteRemediation()
     {
         if (_isRemediating) return;
@@ -1147,21 +1243,18 @@
                 StateService.LogConsole($"✅ Remediation executed: {remediation.Title}", "status-success");
                 StateService.LogAction($"Remediation SUCCESS: {remediation.Title} ({targetCheckId})");
 
-                // اسکن پس‌زمینه برای تأیید وضعیت واقعی سیستم
                 await StateService.RescanCheckAsync(targetCheckId);
                 var newStatus = StateService.CurrentScanResult?.Findings
                     .FirstOrDefault(f => f.CheckId == targetCheckId)?.Status;
 
                 if (newStatus == CheckStatus.Pass)
                 {
-                    // تأیید شد → دکمه Remediate خودبه‌خود حذف می‌شود (چون وضعیت Pass است)
                     _noticeKind = "success";
                     _remediationNotice = $"✅ {remediation.Title}: applied and verified. The Remediate button is now disabled for this item.";
                     StateService.LogConsole($"🎯 Verification PASSED: {targetCheckId} is now compliant.", "status-success");
                 }
                 else if (remediation.RequiresReboot)
                 {
-                    // تذکر ری‌استارت
                     _noticeKind = "warning";
                     _remediationNotice = $"⚠️ {remediation.Title}: applied, but a REBOOT is required. Restart Windows, then run a new scan — the item should be fixed.";
                     StateService.LogConsole($"⚠️ Reboot required for {targetCheckId}.", "status-warning");

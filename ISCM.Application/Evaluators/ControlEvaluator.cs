@@ -142,6 +142,8 @@ public class ControlEvaluator : IControlEvaluator
 
         foreach (var evidence in allEvidence)
         {
+            finding.AddEvidence(evidence);
+
             finding.AddTestResult(new TestResult(
                 evidence.SourceType.ToString(),
                 evidence.SourceName,

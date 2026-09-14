@@ -32,6 +32,9 @@ public class Finding : BaseEntity
     public IReadOnlyList<string> FixTools { get; private set; } = new List<string>();
     public IReadOnlyList<SubCheck> SubChecks { get; private set; } = new List<SubCheck>();
     public List<TestResult> TestResults { get; private set; } = new List<TestResult>();
+    // Phase 15.2: Direct Evidence storage for Tree View
+    public List<Evidence> Evidences { get; private set; } = new List<Evidence>();
+
 
     // Governance fields
     public bool IsSuppressed { get; private set; } = false;
@@ -95,6 +98,14 @@ public class Finding : BaseEntity
             throw new ArgumentNullException(nameof(result));
 
         TestResults.Add(result);
+    }
+    // Phase 15.2: Add Evidence for Tree View
+    public void AddEvidence(Evidence evidence)
+    {
+        if (evidence == null)
+            throw new ArgumentNullException(nameof(evidence));
+
+        Evidences.Add(evidence);
     }
 
     /// <summary>
