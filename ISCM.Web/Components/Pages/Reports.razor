@@ -14,6 +14,7 @@
 @inject ScanStateService StateService
 @inject ScanHistoryService HistoryService
 @inject ReportGateService GateService
+@inject ISCM.Application.Interfaces.IReportTemplateService TemplateService
 
 <PageTitle>DefenDoor - Reports</PageTitle>
 
@@ -743,6 +744,28 @@
             font-family: 'Consolas', monospace;
             font-size: 10px;
         }
+
+    /* ═══════════════════════════════════════════════════════════
+       Phase 16.3: Custom Templates Styles
+       ═══════════════════════════════════════════════════════════ */
+    .template-info-box {
+        background: rgba(15,23,42,0.6);
+        padding: 10px;
+        border-radius: 6px;
+        margin-bottom: 12px;
+        font-size: 11px;
+        border-left: 3px solid #06b6d4;
+    }
+
+    .template-info-box .template-name {
+        color: #06b6d4;
+        font-weight: bold;
+        margin-bottom: 4px;
+    }
+
+    .template-info-box .template-desc {
+        color: #94a3b8;
+    }
 </style>
 
 <div class="glass-panel">
@@ -788,6 +811,82 @@
                     <div class="type-icon">✅</div>
                     <div class="type-name">Remediation</div>
                     <div class="type-desc">گزارش اصلاح و بسترسازی</div>
+                </div>
+            </div>
+        </div>
+
+        @* ═══════════════════════════════════════════════════════════
+           Phase 16.3: Custom Templates Panel
+           ═══════════════════════════════════════════════════════════ *@
+        <div class="panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
+                <div>
+                    <div class="section-title" style="margin-bottom:2px;">📋 Custom Templates</div>
+                    <div class="section-sub">قالب‌های ذخیره‌شده را انتخاب یا تنظیمات فعلی را ذخیره کنید</div>
+                </div>
+                @if (_isLoadingTemplates)
+                {
+                    <span style="color:#64748b; font-size:11px;">Loading templates...</span>
+                }
+            </div>
+            
+            @if (_templates.Count > 0)
+            {
+                <div style="margin-bottom: 12px;">
+                    <label style="color:#94a3b8; font-size:11px; display:block; margin-bottom:6px;">Select Template:</label>
+                    <select class="selector-dropdown" @onchange="e => { 
+                        var id = e.Value?.ToString();
+                        _selectedTemplate = _templates.FirstOrDefault(t => t.TemplateId == id);
+                        if (_selectedTemplate != null) ApplyTemplate(_selectedTemplate);
+                    }">
+                        @foreach (var t in _templates)
+                        {
+                            <option value="@t.TemplateId" selected="@(t.TemplateId == _selectedTemplate?.TemplateId)">
+                                @t.Name @(t.TemplateId.StartsWith("builtin-") ? "(Built-in)" : "")
+                            </option>
+                        }
+                    </select>
+                </div>
+                
+                @if (_selectedTemplate != null)
+                {
+                    <div class="template-info-box">
+                        <div class="template-name">@_selectedTemplate.Name</div>
+                        <div class="template-desc">@_selectedTemplate.Description</div>
+                        <div style="margin-top:6px; display:flex; gap:12px; flex-wrap:wrap;">
+                            <span style="color:#64748b;">Format: <span style="color:#e2e8f0;">@_selectedTemplate.PreferredFormat</span></span>
+                            @if (_selectedTemplate.IncludeRawEvidence)
+                            {
+                                <span style="color:#10b981;">✓ Raw Evidence</span>
+                            }
+                            @if (_selectedTemplate.IsBilingual)
+                            {
+                                <span style="color:#06b6d4;">✓ Bilingual</span>
+                            }
+                        </div>
+                        @if (!_selectedTemplate.TemplateId.StartsWith("builtin-"))
+                        {
+                            <button class="btn-cancel" style="margin-top:8px; padding:4px 12px; font-size:10px;" 
+                                    @onclick="() => DeleteTemplateAsync(_selectedTemplate.TemplateId)">
+                                🗑️ Delete Template
+                            </button>
+                        }
+                    </div>
+                }
+            }
+            
+            <div style="border-top:1px solid #334155; padding-top:12px; margin-top:12px;">
+                <div style="color:#94a3b8; font-size:11px; margin-bottom:8px;">Save Current Settings as New Template:</div>
+                <div style="display:flex; gap:8px; margin-bottom:8px;">
+                    <input type="text" class="sys-input" style="flex:1; width:auto;" 
+                           placeholder="Template Name (e.g., 'Monthly Compliance Report')" 
+                           @bind="_newTemplateName" />
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <input type="text" class="sys-input" style="flex:1; width:auto;" 
+                           placeholder="Description (optional)" 
+                           @bind="_newTemplateDescription" />
+                    <button class="btn-save" @onclick="SaveCurrentAsTemplateAsync">💾 Save Template</button>
                 </div>
             </div>
         </div>
@@ -1270,6 +1369,15 @@
     private void SelectBeforeAfterType() => SelectedReportType = "beforeafter";
     private void SelectRemediationType() => SelectedReportType = "remediation";
 
+    // ═══════════════════════════════════════════════════════════
+    // Phase 16.3: Custom Templates State
+    // ═══════════════════════════════════════════════════════════
+    private List<ISCM.Application.Reporting.ReportTemplate> _templates = new();
+    private ISCM.Application.Reporting.ReportTemplate? _selectedTemplate;
+    private bool _isLoadingTemplates = true;
+    private string _newTemplateName = "";
+    private string _newTemplateDescription = "";
+
     // ── Phase 15.4: Snapshot Comparison State ──
     private List<ScanHistoryEntry> SnapshotHistory { get; set; } = new();
     private string SelectedSourceId { get; set; } = "";
@@ -1419,6 +1527,117 @@
         _importResults.Clear();
     }
 
+    // ═══════════════════════════════════════════════════════════
+    // Phase 16.3: Template Management Methods
+    // ═══════════════════════════════════════════════════════════
+    private async Task LoadTemplatesAsync()
+    {
+        _isLoadingTemplates = true;
+        try
+        {
+            _templates = (await TemplateService.ListTemplatesAsync()).ToList();
+            if (_templates.Count > 0 && _selectedTemplate == null)
+            {
+                _selectedTemplate = _templates[0];
+                ApplyTemplate(_selectedTemplate);
+            }
+        }
+        catch (Exception ex)
+        {
+            StateService.LogAction($"Failed to load templates: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingTemplates = false;
+        }
+    }
+
+    private void ApplyTemplate(ISCM.Application.Reporting.ReportTemplate template)
+    {
+        if (template == null) return;
+        
+        // Apply section configurations
+        foreach (var section in template.Sections)
+        {
+            var uiSection = Sections.FirstOrDefault(s => 
+                s.TitleEn.Equals(section.TitleEn, StringComparison.OrdinalIgnoreCase));
+            if (uiSection != null)
+            {
+                uiSection.Enabled = section.Enabled;
+            }
+        }
+        
+        // Apply format preference
+        SelectedFormat = template.PreferredFormat;
+        
+        // Apply export options
+        OptRawEvidence = template.IncludeRawEvidence;
+        OptHashes = template.IncludeFileHashes;
+        OptBilingual = template.IsBilingual;
+        
+        StateService.LogAction($"Applied template: {template.Name}");
+    }
+
+    private async Task SaveCurrentAsTemplateAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newTemplateName))
+        {
+            _errorMessage = "Template name is required.";
+            return;
+        }
+        
+        try
+        {
+            var options = new ISCM.Application.Reporting.ReportGenerationOptions
+            {
+                IncludeExecutiveSummary = Sections.Any(s => s.TitleEn == "Executive" && s.Enabled),
+                IncludeTechnicalFindings = Sections.Any(s => s.TitleEn == "Technical Findings Table" && s.Enabled),
+                IncludeRiskAssessment = Sections.Any(s => s.TitleEn == "Risk Assessment" && s.Enabled),
+                IncludeBeforeAfterComparison = OptBeforeAfter,
+                IncludeRawEvidence = OptRawEvidence,
+                IncludeFileHashes = OptHashes,
+                IsBilingual = OptBilingual
+            };
+            
+            var template = TemplateService.CreateFromOptions(
+                _newTemplateName,
+                _newTemplateDescription,
+                options,
+                "User"
+            );
+            
+            await TemplateService.SaveTemplateAsync(template);
+            await LoadTemplatesAsync();
+            
+            _newTemplateName = "";
+            _newTemplateDescription = "";
+            _errorMessage = null;
+            
+            StateService.LogAction($"Template saved: {template.Name}");
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to save template: {ex.Message}";
+        }
+    }
+
+    private async Task DeleteTemplateAsync(string templateId)
+    {
+        try
+        {
+            var deleted = await TemplateService.DeleteTemplateAsync(templateId);
+            if (deleted)
+            {
+                await LoadTemplatesAsync();
+                StateService.LogAction($"Template deleted: {templateId}");
+            }
+        }
+        catch (Exception ex)
+        {
+            _errorMessage = $"Failed to delete template: {ex.Message}";
+        }
+    }
+
     // ── Report Generation ──
     private async Task GenerateReportAsync()
     {
@@ -1512,6 +1731,7 @@
     {
         StateService.OnChange += HandleStateChanged;
         await RefreshSnapshots();
+        await LoadTemplatesAsync();
     }
 
     private void HandleStateChanged()

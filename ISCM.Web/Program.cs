@@ -220,6 +220,13 @@ builder.Services.AddScoped<IScanService>(sp =>
 });
 builder.Services.AddScoped<IReportService, HtmlReportGenerator>();
 
+builder.Services.AddScoped<IReportService, HtmlReportGenerator>();
+
+// ═══════════════════════════════════════════════════════════
+// Phase 16.3: Custom Report Templates Service
+// ═══════════════════════════════════════════════════════════
+builder.Services.AddScoped<IReportTemplateService, ReportTemplateService>();
+
 // Phase 4.2: ثبت سرویس Remediation
 builder.Services.AddSingleton<IRemediationService, RemediationService>();
 
