@@ -14,11 +14,13 @@
 	</ItemGroup>
 	<ItemGroup>
 		<!-- Phase 13.3: EF Core SQLite for Persistence Layer -->
+		<PackageReference Include="ClosedXML" Version="0.105.1" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="8.0.10" />
 		<PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">
 			<PrivateAssets>all</PrivateAssets>
 			<IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
 		</PackageReference>
+		<PackageReference Include="QuestPDF" Version="2026.9.0" />
 
 		<PackageReference Include="System.DirectoryServices.AccountManagement" Version="10.0.11" />
 		<PackageReference Include="System.Management" Version="10.0.11" />

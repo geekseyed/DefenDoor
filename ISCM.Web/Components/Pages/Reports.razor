@@ -1457,17 +1457,36 @@
             var fullName = GateService.BuildFileName(scan, SelectedReportType, SelectedFormat);
             var baseNoExt = System.IO.Path.GetFileNameWithoutExtension(fullName);
 
+            // ═══════════════════════════════════════════════════════════
+            // Phase 16.1: Map UI toggles to ReportGenerationOptions
+            // ═══════════════════════════════════════════════════════════
+            var options = new ISCM.Application.Reporting.ReportGenerationOptions
+                {
+                    IncludeExecutiveSummary = Sections.Any(s => s.TitleEn == "Executive" && s.Enabled),
+                    IncludeTechnicalFindings = Sections.Any(s => s.TitleEn == "Technical Findings Table" && s.Enabled),
+                    IncludeRiskAssessment = Sections.Any(s => s.TitleEn == "Risk Assessment" && s.Enabled),
+                    IncludeBeforeAfterComparison = OptBeforeAfter,
+                    IncludeRawEvidence = OptRawEvidence,
+                    IncludeFileHashes = OptHashes,
+                    IsBilingual = OptBilingual,
+                    EncryptOutput = OptEncrypt
+                };
+
             _savedFilePath = SelectedFormat switch
             {
                 "html" => await ReportService.GenerateAndSaveReportAsync(scan, outputDir, baseNoExt),
                 "json" => await ReportService.GenerateAndSaveJsonReportAsync(scan, outputDir, baseNoExt),
                 "csv" => await ReportService.GenerateAndSaveCsvReportAsync(scan, outputDir, baseNoExt),
+                // ── NEW Phase 16.1 Formats ──
+                "pdf" => await ReportService.GeneratePdfReportAsync(scan, outputDir, baseNoExt, options),
+                "excel" => await ReportService.GenerateExcelReportAsync(scan, outputDir, baseNoExt, options),
+                "zip" => await ReportService.GenerateZipBundleAsync(scan, outputDir, baseNoExt, options),
                 _ => null
             };
 
             if (_savedFilePath == null)
             {
-                _errorMessage = $"{SelectedFormat.ToUpper()} export (PDF/Excel/ZIP) will be implemented in a future stage.";
+                _errorMessage = $"Unknown format: {SelectedFormat}";
             }
             else
             {
