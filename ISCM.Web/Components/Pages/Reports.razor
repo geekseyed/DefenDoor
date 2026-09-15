@@ -2,6 +2,7 @@
 @rendermode InteractiveServer
 @using ISCM.Application.Interfaces
 @using ISCM.Application.Snapshots
+@using ISCM.Application.Reporting
 @using ISCM.Domain.Entities
 @using ISCM.Domain.Enums
 @using ISCM.Web.Services
@@ -15,6 +16,7 @@
 @inject ScanHistoryService HistoryService
 @inject ReportGateService GateService
 @inject ISCM.Application.Interfaces.IReportTemplateService TemplateService
+@inject ISCM.Application.Interfaces.IScheduledReportService ScheduleService
 
 <PageTitle>DefenDoor - Reports</PageTitle>
 
@@ -72,18 +74,18 @@
         align-items: center;
     }
 
-        .subtab:hover {
-            color: #e2e8f0;
-            background: rgba(6,182,212,0.05);
-        }
+    .subtab:hover {
+        color: #e2e8f0;
+        background: rgba(6,182,212,0.05);
+    }
 
-        .subtab.active {
-            color: #06b6d4;
-            border-color: rgba(6,182,212,0.4);
-            border-bottom-color: #06b6d4;
-            background: rgba(6,182,212,0.08);
-            box-shadow: 0 0 12px rgba(6,182,212,0.15);
-        }
+    .subtab.active {
+        color: #06b6d4;
+        border-color: rgba(6,182,212,0.4);
+        border-bottom-color: #06b6d4;
+        background: rgba(6,182,212,0.08);
+        box-shadow: 0 0 12px rgba(6,182,212,0.15);
+    }
 
     .subtab-icon {
         font-size: 14px;
@@ -128,19 +130,19 @@
         position: relative;
     }
 
-        .type-card:hover {
-            border-color: #06b6d4;
-        }
+    .type-card:hover {
+        border-color: #06b6d4;
+    }
 
-        .type-card.active {
-            border-color: #06b6d4;
-            background: rgba(6,182,212,0.08);
-        }
+    .type-card.active {
+        border-color: #06b6d4;
+        background: rgba(6,182,212,0.08);
+    }
 
-        .type-card.disabled {
-            opacity: 0.45;
-            cursor: not-allowed;
-        }
+    .type-card.disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+    }
 
     .type-icon {
         font-size: 22px;
@@ -171,25 +173,25 @@
         letter-spacing: 1px;
     }
 
-        .gate-badge.locked {
-            background: rgba(148,163,184,0.15);
-            color: #94a3b8;
-        }
+    .gate-badge.locked {
+        background: rgba(148,163,184,0.15);
+        color: #94a3b8;
+    }
 
-        .gate-badge.firstallowed {
-            background: rgba(16,185,129,0.15);
-            color: #10b981;
-        }
+    .gate-badge.firstallowed {
+        background: rgba(16,185,129,0.15);
+        color: #10b981;
+    }
 
-        .gate-badge.blocked {
-            background: rgba(245,158,11,0.15);
-            color: #f59e0b;
-        }
+    .gate-badge.blocked {
+        background: rgba(245,158,11,0.15);
+        color: #f59e0b;
+    }
 
-        .gate-badge.changeallowed {
-            background: rgba(6,182,212,0.15);
-            color: #06b6d4;
-        }
+    .gate-badge.changeallowed {
+        background: rgba(6,182,212,0.15);
+        color: #06b6d4;
+    }
 
     .ctx-grid {
         display: grid;
@@ -234,11 +236,11 @@
         cursor: pointer;
     }
 
-        .chip.active {
-            background: #06b6d4;
-            border-color: #06b6d4;
-            color: white;
-        }
+    .chip.active {
+        background: #06b6d4;
+        border-color: #06b6d4;
+        color: white;
+    }
 
     .btn-edit {
         background: #334155;
@@ -298,11 +300,11 @@
         border-bottom: 1px solid rgba(51,65,85,0.4);
     }
 
-        .section-check input {
-            accent-color: #06b6d4;
-            width: 14px;
-            height: 14px;
-        }
+    .section-check input {
+        accent-color: #06b6d4;
+        width: 14px;
+        height: 14px;
+    }
 
     .sc-title {
         color: #e2e8f0;
@@ -361,14 +363,14 @@
         transition: 0.2s;
     }
 
-        .fmt-card:hover {
-            border-color: #06b6d4;
-        }
+    .fmt-card:hover {
+        border-color: #06b6d4;
+    }
 
-        .fmt-card.active {
-            border-color: #06b6d4;
-            background: rgba(6,182,212,0.08);
-        }
+    .fmt-card.active {
+        border-color: #06b6d4;
+        background: rgba(6,182,212,0.08);
+    }
 
     .fmt-name {
         color: #e2e8f0;
@@ -417,10 +419,10 @@
         cursor: pointer;
     }
 
-        .btn-generate:disabled {
-            background: #475569;
-            cursor: not-allowed;
-        }
+    .btn-generate:disabled {
+        background: #475569;
+        cursor: not-allowed;
+    }
 
     .btn-secondary {
         background: #1e293b;
@@ -490,10 +492,10 @@
         white-space: nowrap;
     }
 
-        .btn-compare:disabled {
-            background: #475569;
-            cursor: not-allowed;
-        }
+    .btn-compare:disabled {
+        background: #475569;
+        cursor: not-allowed;
+    }
 
     .diff-summary {
         display: grid;
@@ -565,9 +567,9 @@
         transition: 0.2s;
     }
 
-        .diff-branch:hover {
-            border-color: #06b6d4;
-        }
+    .diff-branch:hover {
+        border-color: #06b6d4;
+    }
 
     .diff-branch-header {
         display: flex;
@@ -658,10 +660,10 @@
         cursor: pointer;
     }
 
-        .btn-export-small:hover {
-            border-color: #06b6d4;
-            background: rgba(6, 182, 212, 0.1);
-        }
+    .btn-export-small:hover {
+        border-color: #06b6d4;
+        background: rgba(6, 182, 212, 0.1);
+    }
 
     .btn-export-small:disabled {
         opacity: 0.5;
@@ -722,32 +724,29 @@
         font-size: 11px;
     }
 
-        .compliance-table th {
-            background: #0f172a;
-            color: #94a3b8;
-            text-transform: uppercase;
-            font-size: 10px;
-            letter-spacing: 1px;
-            padding: 8px 10px;
-            text-align: left;
-            border-bottom: 1px solid #334155;
-        }
+    .compliance-table th {
+        background: #0f172a;
+        color: #94a3b8;
+        text-transform: uppercase;
+        font-size: 10px;
+        letter-spacing: 1px;
+        padding: 8px 10px;
+        text-align: left;
+        border-bottom: 1px solid #334155;
+    }
 
-        .compliance-table td {
-            padding: 8px 10px;
-            border-bottom: 1px solid rgba(51,65,85,0.4);
-            color: #e2e8f0;
-        }
+    .compliance-table td {
+        padding: 8px 10px;
+        border-bottom: 1px solid rgba(51,65,85,0.4);
+        color: #e2e8f0;
+    }
 
-        .compliance-table code {
-            color: #06b6d4;
-            font-family: 'Consolas', monospace;
-            font-size: 10px;
-        }
+    .compliance-table code {
+        color: #06b6d4;
+        font-family: 'Consolas', monospace;
+        font-size: 10px;
+    }
 
-    /* ═══════════════════════════════════════════════════════════
-       Phase 16.3: Custom Templates Styles
-       ═══════════════════════════════════════════════════════════ */
     .template-info-box {
         background: rgba(15,23,42,0.6);
         padding: 10px;
@@ -766,6 +765,138 @@
     .template-info-box .template-desc {
         color: #94a3b8;
     }
+
+    .schedule-card {
+        background: rgba(15,23,42,0.8);
+        border: 1px solid #334155;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+    }
+
+    .schedule-card.inactive {
+        opacity: 0.6;
+    }
+
+    .schedule-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 8px;
+    }
+
+    .schedule-name {
+        color: #06b6d4;
+        font-weight: bold;
+        font-size: 13px;
+    }
+
+    .schedule-meta {
+        color: #94a3b8;
+        font-size: 10px;
+        font-family: 'Consolas', monospace;
+    }
+
+    .schedule-details {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 8px;
+        margin-top: 8px;
+    }
+
+    .schedule-detail-item {
+        background: rgba(15,23,42,0.6);
+        padding: 6px 10px;
+        border-radius: 4px;
+        font-size: 10px;
+    }
+
+    .schedule-detail-label {
+        color: #64748b;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .schedule-detail-value {
+        color: #e2e8f0;
+        font-weight: bold;
+    }
+
+    .schedule-actions {
+        display: flex;
+        gap: 6px;
+        margin-top: 10px;
+    }
+
+    .btn-schedule-action {
+        background: #1e293b;
+        border: 1px solid #334155;
+        color: #e2e8f0;
+        font-size: 10px;
+        padding: 4px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+
+    .btn-schedule-action:hover {
+        border-color: #06b6d4;
+    }
+
+    .btn-schedule-action.execute {
+        background: rgba(6,182,212,0.1);
+        border-color: #06b6d4;
+        color: #06b6d4;
+    }
+
+    .btn-schedule-action.delete {
+        background: rgba(239,68,68,0.1);
+        border-color: #ef4444;
+        color: #ef4444;
+    }
+
+    .execution-log-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 8px 12px;
+        background: rgba(15,23,42,0.8);
+        border: 1px solid #334155;
+        border-radius: 6px;
+        margin-bottom: 6px;
+        font-size: 11px;
+    }
+
+    .execution-log-item.success { border-left: 3px solid #10b981; }
+    .execution-log-item.failed { border-left: 3px solid #ef4444; }
+    .execution-log-item.skippedawaitingapproval { border-left: 3px solid #f59e0b; }
+
+    .form-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px 20px;
+    }
+
+    .form-group {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+
+    .form-label {
+        color: #94a3b8;
+        font-size: 11px;
+        text-transform: uppercase;
+    }
+
+    .form-input {
+        background: #0f172a;
+        border: 1px solid #334155;
+        color: #e2e8f0;
+        font-family: 'Consolas', monospace;
+        font-size: 12px;
+        padding: 6px 10px;
+        border-radius: 6px;
+    }
 </style>
 
 <div class="glass-panel">
@@ -783,7 +914,7 @@
         }
     </div>
 
-    @if (StateService.CurrentScanResult == null && ActiveSubTab != "baseline" && ActiveSubTab != "ledger")
+    @if (StateService.CurrentScanResult == null && ActiveSubTab != "baseline" && ActiveSubTab != "ledger" && ActiveSubTab != "scheduler")
     {
         <p class="empty-state">No scan data available for reporting. Please run a scan from the Dashboard first.</p>
     }
@@ -815,9 +946,6 @@
             </div>
         </div>
 
-        @* ═══════════════════════════════════════════════════════════
-           Phase 16.3: Custom Templates Panel
-           ═══════════════════════════════════════════════════════════ *@
         <div class="panel">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 12px;">
                 <div>
@@ -1279,6 +1407,213 @@
             }
         </div>
     }
+    else if (ActiveSubTab == "scheduler")
+    {
+        <div class="panel">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 16px;">
+                <div>
+                    <div class="section-title" style="margin-bottom:2px;">⏰ Scheduled Reports</div>
+                    <div class="section-sub">مدیریت اسکن‌ها و گزارش‌های زمان‌بندی‌شده (محیط Air-Gapped، بدون ایمیل)</div>
+                </div>
+                <button class="btn-edit" @onclick="RefreshSchedulesAsync">🔄 Refresh</button>
+            </div>
+
+            <div style="background:rgba(15,23,42,0.8); border:1px solid #334155; border-radius:8px; padding:14px; margin-bottom:16px;">
+                <div style="color:#e2e8f0; font-weight:bold; font-size:12px; margin-bottom:10px;">➕ Create New Schedule</div>
+                
+                <div class="form-grid">
+                    <div class="form-group">
+                        <label class="form-label">Schedule Name</label>
+                        <input class="form-input" @bind="_newScheduleName" placeholder="e.g., Weekly Compliance Scan" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Frequency</label>
+                        <select class="form-input" @bind="_newScheduleFrequency">
+                            <option value="@ScheduleFrequency.Hourly.ToString()">Hourly</option>
+                            <option value="@ScheduleFrequency.Daily.ToString()">Daily</option>
+                            <option value="@ScheduleFrequency.Weekly.ToString()">Weekly</option>
+                            <option value="@ScheduleFrequency.Monthly.ToString()">Monthly</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Interval</label>
+                        <input class="form-input" type="number" min="1" @bind="_newScheduleInterval" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Execution Time (HH:MM)</label>
+                        <input class="form-input" type="text" @bind="_newScheduleTimeStr" placeholder="08:00" pattern="[0-9]{2}:[0-9]{2}" />
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Output Format</label>
+                        <select class="form-input" @bind="_newScheduleFormat">
+                            <option value="pdf">PDF</option>
+                            <option value="html">HTML</option>
+                            <option value="excel">Excel</option>
+                            <option value="json">JSON</option>
+                            <option value="zip">ZIP Bundle</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">Template</label>
+                        <select class="form-input" @bind="_newScheduleTemplateId">
+                            <option value="">(Default Settings)</option>
+                            @foreach (var t in _templates)
+                            {
+                                <option value="@t.TemplateId">@t.Name</option>
+                            }
+                        </select>
+                    </div>
+                </div>
+
+                <div style="margin-top:12px; padding:10px; background:rgba(245,158,11,0.1); border-left:3px solid #f59e0b; border-radius:4px; font-size:11px;">
+                    <label class="section-check" style="border:none; padding:0;">
+                        <input type="checkbox" @bind="_newScheduleAutoExecute" style="accent-color:#f59e0b;" />
+                        <span>
+                            <span class="sc-title" style="color:#f59e0b;">⚠️ Auto-Execute</span>
+                            <span class="sc-desc">— اجرای خودکار در زمان مقرر (بدون تایید کاربر). در محیط Air-Gapped توصیه می‌شود غیرفعال باشد.</span>
+                        </span>
+                    </label>
+                </div>
+
+                <div style="margin-top:12px; display:flex; gap:8px;">
+                    <button class="btn-save" @onclick="CreateScheduleAsync" disabled="@_isCreatingSchedule">
+                        @(_isCreatingSchedule ? "⏳ Creating..." : "💾 Create Schedule")
+                    </button>
+                </div>
+                @if (!string.IsNullOrEmpty(_scheduleMessage))
+                {
+                    <div class="result-message" style="background: rgba(16,185,129,0.1); color: #10b981; margin-top:10px; padding:8px;">
+                        ✅ @_scheduleMessage
+                    </div>
+                }
+                @if (!string.IsNullOrEmpty(_scheduleError))
+                {
+                    <div class="result-message" style="background: rgba(239,68,68,0.1); color: #ef4444; margin-top:10px; padding:8px;">
+                        ⚠️ @_scheduleError
+                    </div>
+                }
+            </div>
+
+            <div class="section-title" style="margin-top:20px;">Active Schedules</div>
+            @if (_isLoadingSchedules)
+            {
+                <div class="empty-state">Loading schedules...</div>
+            }
+            else if (_schedules.Count == 0)
+            {
+                <p class="empty-state">No scheduled reports configured yet.</p>
+            }
+            else
+            {
+                @foreach (var s in _schedules)
+                {
+                    <div class="schedule-card @(s.IsActive ? "" : "inactive")">
+                        <div class="schedule-header">
+                            <div>
+                                <div class="schedule-name">@s.Name</div>
+                                <div class="schedule-meta">ID: @s.ScheduleId.Substring(0, 8)... | Runs: @s.ExecutionCount</div>
+                            </div>
+                            <div style="display:flex; gap:6px;">
+                                <span style="padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold;
+                                    @(s.IsActive ? "background:rgba(16,185,129,0.2); color:#10b981;" : "background:rgba(148,163,184,0.2); color:#94a3b8;")">
+                                    @(s.IsActive ? "ACTIVE" : "INACTIVE")
+                                </span>
+                                <span style="padding:2px 8px; border-radius:4px; font-size:10px; font-weight:bold;
+                                    @(s.AutoExecute ? "background:rgba(245,158,11,0.2); color:#f59e0b;" : "background:rgba(6,182,212,0.2); color:#06b6d4;")">
+                                    @(s.AutoExecute ? "AUTO" : "MANUAL")
+                                </span>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(s.Description))
+                        {
+                            <div style="color:#94a3b8; font-size:10px; margin:4px 0;">@s.Description</div>
+                        }
+                        <div class="schedule-details">
+                            <div class="schedule-detail-item">
+                                <span class="schedule-detail-label">Frequency</span>
+                                <span class="schedule-detail-value">@s.Frequency (×@s.IntervalValue)</span>
+                            </div>
+                            <div class="schedule-detail-item">
+                                <span class="schedule-detail-label">Format</span>
+                                <span class="schedule-detail-value">@s.OutputFormat.ToUpper()</span>
+                            </div>
+                            <div class="schedule-detail-item">
+                                <span class="schedule-detail-label">Next Run</span>
+                                <span class="schedule-detail-value">@(s.NextExecutionAtUtc?.ToLocalTime().ToString("MM/dd HH:mm") ?? "N/A")</span>
+                            </div>
+                            <div class="schedule-detail-item">
+                                <span class="schedule-detail-label">Last Run</span>
+                                <span class="schedule-detail-value">@(s.LastExecutedAtUtc?.ToLocalTime().ToString("MM/dd HH:mm") ?? "Never")</span>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(s.LastExecutionStatus))
+                        {
+                            <div style="margin-top:8px; font-size:10px; color:#94a3b8;">
+                                Last Status: 
+                                <span style="color:@(s.LastExecutionStatus == "Success" ? "#10b981" : s.LastExecutionStatus == "Failed" ? "#ef4444" : "#f59e0b");">
+                                    @s.LastExecutionStatus
+                                </span>
+                                @if (!string.IsNullOrEmpty(s.LastExecutionError))
+                                {
+                                    <span style="color:#ef4444;"> — @s.LastExecutionError</span>
+                                }
+                            </div>
+                        }
+                        <div class="schedule-actions">
+                            <button class="btn-schedule-action execute" 
+                                    @onclick="() => ExecuteScheduleNowAsync(s.ScheduleId)"
+                                    disabled="@(_executingScheduleId == s.ScheduleId)">
+                                @(_executingScheduleId == s.ScheduleId ? "⏳ Running..." : "▶️ Execute Now")
+                            </button>
+                            <button class="btn-schedule-action delete" @onclick="() => DeleteScheduleAsync(s.ScheduleId)">
+                                🗑️ Delete
+                            </button>
+                        </div>
+                    </div>
+                }
+            }
+
+            <div class="section-title" style="margin-top:24px;">Recent Execution History</div>
+            @if (_executionHistory.Count == 0)
+            {
+                <p class="empty-state" style="padding:20px;">No executions yet.</p>
+            }
+            else
+            {
+                @foreach (var log in _executionHistory.Take(20))
+                {
+                    <div class="execution-log-item @log.Outcome.ToString().ToLower()">
+                        <span style="font-size:14px;">
+                            @(log.Outcome switch {
+                                ExecutionOutcome.Success => "✅",
+                                ExecutionOutcome.Failed => "❌",
+                                ExecutionOutcome.SkippedAwaitingApproval => "⏸️",
+                                _ => "⏳"
+                            })
+                        </span>
+                        <span style="flex:1;">
+                            <span style="color:#e2e8f0; font-weight:bold;">@log.ScheduleName</span>
+                            <span style="color:#64748b; margin-left:8px;">@log.Outcome</span>
+                            <span style="color:#94a3b8; font-size:10px; margin-left:8px;">
+                                @log.TriggeredAtUtc.ToLocalTime().ToString("yyyy-MM-dd HH:mm:ss")
+                                @if (log.WasAutoExecuted) { <span style="color:#f59e0b;">(Auto)</span> } else { <span style="color:#06b6d4;">(User)</span> }
+                            </span>
+                            @if (!string.IsNullOrEmpty(log.ErrorMessage))
+                            {
+                                <div style="color:#ef4444; font-size:10px; margin-top:2px;">@log.ErrorMessage</div>
+                            }
+                            @if (!string.IsNullOrEmpty(log.GeneratedFilePath))
+                            {
+                                <div style="color:#10b981; font-size:10px; margin-top:2px; font-family:'Consolas',monospace;">
+                                    📄 @System.IO.Path.GetFileName(log.GeneratedFilePath)
+                                </div>
+                            }
+                        </span>
+                    </div>
+                }
+            }
+        </div>
+    }
 </div>
 
 @code {
@@ -1305,7 +1640,8 @@
         ("beforeafter", "📈", "Before/After"),
         ("system", "🖥", "System & Context"),
         ("baseline", "📚", "Baseline"),
-        ("ledger", "🗂", "Ledger & Archive")
+        ("ledger", "🗂", "Ledger & Archive"),
+        ("scheduler", "⏰", "Scheduler")
     };
 
     private static readonly List<(string Id, string Icon, string Name, string Desc)> ExportFormats = new()
@@ -1369,16 +1705,29 @@
     private void SelectBeforeAfterType() => SelectedReportType = "beforeafter";
     private void SelectRemediationType() => SelectedReportType = "remediation";
 
-    // ═══════════════════════════════════════════════════════════
-    // Phase 16.3: Custom Templates State
-    // ═══════════════════════════════════════════════════════════
-    private List<ISCM.Application.Reporting.ReportTemplate> _templates = new();
-    private ISCM.Application.Reporting.ReportTemplate? _selectedTemplate;
+    private List<ReportTemplate> _templates = new();
+    private ReportTemplate? _selectedTemplate;
     private bool _isLoadingTemplates = true;
     private string _newTemplateName = "";
     private string _newTemplateDescription = "";
 
-    // ── Phase 15.4: Snapshot Comparison State ──
+    private List<ReportSchedule> _schedules = new();
+    private List<ScheduleExecutionLog> _executionHistory = new();
+    private bool _isLoadingSchedules = true;
+    private bool _isCreatingSchedule = false;
+    private string? _executingScheduleId = null;
+    private string? _scheduleMessage = null;
+    private string? _scheduleError = null;
+
+    // ── Phase 16.4: New schedule form state (using string for time input) ──
+    private string _newScheduleName = "";
+    private string _newScheduleFrequency = ScheduleFrequency.Weekly.ToString();
+    private int _newScheduleInterval = 1;
+    private string _newScheduleTimeStr = "08:00";
+    private string _newScheduleFormat = "pdf";
+    private string _newScheduleTemplateId = "";
+    private bool _newScheduleAutoExecute = false;
+
     private List<ScanHistoryEntry> SnapshotHistory { get; set; } = new();
     private string SelectedSourceId { get; set; } = "";
     private string SelectedTargetId { get; set; } = "";
@@ -1433,7 +1782,6 @@
         }
     }
 
-    // ── Phase 15.5: Export/Import State ──
     private bool _isImporting;
     private Guid? _exportingSnapshotId;
     private List<SnapshotImportResult> _importResults = new();
@@ -1527,9 +1875,6 @@
         _importResults.Clear();
     }
 
-    // ═══════════════════════════════════════════════════════════
-    // Phase 16.3: Template Management Methods
-    // ═══════════════════════════════════════════════════════════
     private async Task LoadTemplatesAsync()
     {
         _isLoadingTemplates = true;
@@ -1552,11 +1897,10 @@
         }
     }
 
-    private void ApplyTemplate(ISCM.Application.Reporting.ReportTemplate template)
+    private void ApplyTemplate(ReportTemplate template)
     {
         if (template == null) return;
         
-        // Apply section configurations
         foreach (var section in template.Sections)
         {
             var uiSection = Sections.FirstOrDefault(s => 
@@ -1567,10 +1911,8 @@
             }
         }
         
-        // Apply format preference
         SelectedFormat = template.PreferredFormat;
         
-        // Apply export options
         OptRawEvidence = template.IncludeRawEvidence;
         OptHashes = template.IncludeFileHashes;
         OptBilingual = template.IsBilingual;
@@ -1588,7 +1930,7 @@
         
         try
         {
-            var options = new ISCM.Application.Reporting.ReportGenerationOptions
+            var options = new ReportGenerationOptions
             {
                 IncludeExecutiveSummary = Sections.Any(s => s.TitleEn == "Executive" && s.Enabled),
                 IncludeTechnicalFindings = Sections.Any(s => s.TitleEn == "Technical Findings Table" && s.Enabled),
@@ -1638,7 +1980,140 @@
         }
     }
 
-    // ── Report Generation ──
+    private async Task RefreshSchedulesAsync()
+    {
+        _isLoadingSchedules = true;
+        _scheduleMessage = null;
+        _scheduleError = null;
+        try
+        {
+            _schedules = (await ScheduleService.ListSchedulesAsync()).ToList();
+            _executionHistory = (await ScheduleService.GetExecutionHistoryAsync(limit: 50)).ToList();
+        }
+        catch (Exception ex)
+        {
+            StateService.LogAction($"Failed to load schedules: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingSchedules = false;
+        }
+    }
+
+    private async Task CreateScheduleAsync()
+    {
+        _scheduleMessage = null;
+        _scheduleError = null;
+
+        if (string.IsNullOrWhiteSpace(_newScheduleName))
+        {
+            _scheduleError = "Schedule name is required.";
+            return;
+        }
+
+        _isCreatingSchedule = true;
+        try
+        {
+            if (!Enum.TryParse<ScheduleFrequency>(_newScheduleFrequency, out var freq))
+                freq = ScheduleFrequency.Weekly;
+
+            // Parse time string (HH:mm format) to TimeSpan
+            if (!TimeSpan.TryParse(_newScheduleTimeStr, out var execTime))
+                execTime = new TimeSpan(8, 0, 0);
+
+            var schedule = new ReportSchedule
+            {
+                Name = _newScheduleName,
+                Description = $"Created on {DateTime.Now:yyyy-MM-dd HH:mm}",
+                Frequency = freq,
+                IntervalValue = Math.Max(1, _newScheduleInterval),
+                ExecutionTime = execTime,
+                TargetDayOfWeek = DayOfWeek.Monday,
+                DayOfMonth = 1,
+                TemplateId = _newScheduleTemplateId,
+                TargetHostname = "localhost",
+                ReportType = "current",
+                OutputFormat = _newScheduleFormat,
+                AutoExecute = _newScheduleAutoExecute,
+                SaveToFile = true,
+                IsActive = true
+            };
+
+            var saved = await ScheduleService.SaveScheduleAsync(schedule);
+            
+            // Reset form
+            _newScheduleName = "";
+            _newScheduleFrequency = ScheduleFrequency.Weekly.ToString();
+            _newScheduleInterval = 1;
+            _newScheduleTimeStr = "08:00";
+            _newScheduleFormat = "pdf";
+            _newScheduleTemplateId = "";
+            _newScheduleAutoExecute = false;
+
+            var nextRun = saved.NextExecutionAtUtc?.ToLocalTime();
+            _scheduleMessage = $"Schedule '{saved.Name}' created. Next run: {(nextRun.HasValue ? nextRun.Value.ToString("yyyy-MM-dd HH:mm") : "N/A")}";
+            StateService.LogAction($"Schedule created: {saved.Name} (Auto: {saved.AutoExecute})");
+            
+            await RefreshSchedulesAsync();
+        }
+        catch (Exception ex)
+        {
+            _scheduleError = $"Failed to create schedule: {ex.Message}";
+        }
+        finally
+        {
+            _isCreatingSchedule = false;
+        }
+    }
+
+    private async Task ExecuteScheduleNowAsync(string scheduleId)
+    {
+        _executingScheduleId = scheduleId;
+        _scheduleMessage = null;
+        _scheduleError = null;
+
+        try
+        {
+            var filePath = await ScheduleService.ExecuteNowAsync(scheduleId, "User");
+            if (filePath != null)
+            {
+                _scheduleMessage = $"Schedule executed successfully: {System.IO.Path.GetFileName(filePath)}";
+                StateService.LogAction($"Schedule manually executed: {scheduleId.Substring(0, 8)}");
+            }
+            else
+            {
+                _scheduleError = "Schedule execution failed (schedule not found).";
+            }
+            await RefreshSchedulesAsync();
+        }
+        catch (Exception ex)
+        {
+            _scheduleError = $"Execution failed: {ex.Message}";
+        }
+        finally
+        {
+            _executingScheduleId = null;
+        }
+    }
+
+    private async Task DeleteScheduleAsync(string scheduleId)
+    {
+        try
+        {
+            var deleted = await ScheduleService.DeleteScheduleAsync(scheduleId);
+            if (deleted)
+            {
+                _scheduleMessage = "Schedule deleted successfully.";
+                StateService.LogAction($"Schedule deleted: {scheduleId.Substring(0, 8)}");
+                await RefreshSchedulesAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            _scheduleError = $"Failed to delete schedule: {ex.Message}";
+        }
+    }
+
     private async Task GenerateReportAsync()
     {
         var scan = StateService.CurrentScanResult;
@@ -1676,27 +2151,23 @@
             var fullName = GateService.BuildFileName(scan, SelectedReportType, SelectedFormat);
             var baseNoExt = System.IO.Path.GetFileNameWithoutExtension(fullName);
 
-            // ═══════════════════════════════════════════════════════════
-            // Phase 16.1: Map UI toggles to ReportGenerationOptions
-            // ═══════════════════════════════════════════════════════════
-            var options = new ISCM.Application.Reporting.ReportGenerationOptions
-                {
-                    IncludeExecutiveSummary = Sections.Any(s => s.TitleEn == "Executive" && s.Enabled),
-                    IncludeTechnicalFindings = Sections.Any(s => s.TitleEn == "Technical Findings Table" && s.Enabled),
-                    IncludeRiskAssessment = Sections.Any(s => s.TitleEn == "Risk Assessment" && s.Enabled),
-                    IncludeBeforeAfterComparison = OptBeforeAfter,
-                    IncludeRawEvidence = OptRawEvidence,
-                    IncludeFileHashes = OptHashes,
-                    IsBilingual = OptBilingual,
-                    EncryptOutput = OptEncrypt
-                };
+            var options = new ReportGenerationOptions
+            {
+                IncludeExecutiveSummary = Sections.Any(s => s.TitleEn == "Executive" && s.Enabled),
+                IncludeTechnicalFindings = Sections.Any(s => s.TitleEn == "Technical Findings Table" && s.Enabled),
+                IncludeRiskAssessment = Sections.Any(s => s.TitleEn == "Risk Assessment" && s.Enabled),
+                IncludeBeforeAfterComparison = OptBeforeAfter,
+                IncludeRawEvidence = OptRawEvidence,
+                IncludeFileHashes = OptHashes,
+                IsBilingual = OptBilingual,
+                EncryptOutput = OptEncrypt
+            };
 
             _savedFilePath = SelectedFormat switch
             {
                 "html" => await ReportService.GenerateAndSaveReportAsync(scan, outputDir, baseNoExt),
                 "json" => await ReportService.GenerateAndSaveJsonReportAsync(scan, outputDir, baseNoExt),
                 "csv" => await ReportService.GenerateAndSaveCsvReportAsync(scan, outputDir, baseNoExt),
-                // ── NEW Phase 16.1 Formats ──
                 "pdf" => await ReportService.GeneratePdfReportAsync(scan, outputDir, baseNoExt, options),
                 "excel" => await ReportService.GenerateExcelReportAsync(scan, outputDir, baseNoExt, options),
                 "zip" => await ReportService.GenerateZipBundleAsync(scan, outputDir, baseNoExt, options),
@@ -1724,14 +2195,19 @@
     }
 
     private void PreviewReport() => StateService.LogAction($"Report preview requested: type={SelectedReportType}");
-    private void EmailReport() => StateService.LogAction("Email report: planned for a future step.");
-    private void ScheduleReport() => StateService.LogAction("Schedule recurring report: planned for a future step.");
+    private void EmailReport() => StateService.LogAction("Email report: not available in Air-Gapped environment.");
+    private void ScheduleReport()
+    {
+        ActiveSubTab = "scheduler";
+        StateService.LogAction("Navigated to Scheduler tab");
+    }
 
     protected override async Task OnInitializedAsync()
     {
         StateService.OnChange += HandleStateChanged;
         await RefreshSnapshots();
         await LoadTemplatesAsync();
+        await RefreshSchedulesAsync();
     }
 
     private void HandleStateChanged()

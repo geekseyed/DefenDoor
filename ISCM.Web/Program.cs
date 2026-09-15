@@ -227,6 +227,11 @@ builder.Services.AddScoped<IReportService, HtmlReportGenerator>();
 // ═══════════════════════════════════════════════════════════
 builder.Services.AddScoped<IReportTemplateService, ReportTemplateService>();
 
+// ═══════════════════════════════════════════════════════════
+// Phase 16.4: Scheduled Reports Service
+// ═══════════════════════════════════════════════════════════
+builder.Services.AddScoped<IScheduledReportService, ScheduledReportService>();
+
 // Phase 4.2: ثبت سرویس Remediation
 builder.Services.AddSingleton<IRemediationService, RemediationService>();
 
@@ -269,6 +274,11 @@ builder.Services.AddSingleton<ISnapshotDiffEngine, SnapshotDiffEngine>();
 builder.Services.AddScoped<ITrendAnalysisService, TrendAnalysisService>();
 
 // Snapshot Diff Engine (Singleton - stateless comparison logic)
+
+// ═══════════════════════════════════════════════════════════
+// Phase 16.4: Background Service for Scheduled Reports
+// ═══════════════════════════════════════════════════════════
+builder.Services.AddHostedService<ISCM.Web.Services.ScheduledReportBackgroundService>();
 
 var app = builder.Build();
 
