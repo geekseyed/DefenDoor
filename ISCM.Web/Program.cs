@@ -254,6 +254,13 @@ builder.Services.AddSingleton<ISCM.Application.Interfaces.ISnapshotMapper, ISCM.
 builder.Services.AddScoped<ISCM.Application.Interfaces.ISnapshotRepository, ISCM.Infrastructure.Persistence.Repositories.SqliteSnapshotRepository>();
 builder.Services.AddSingleton<ISnapshotDiffEngine, SnapshotDiffEngine>();
 
+builder.Services.AddSingleton<ISnapshotDiffEngine, SnapshotDiffEngine>();
+
+// ═══════════════════════════════════════════════════════════
+// Phase 16.2: Trend Analysis Service
+// ═══════════════════════════════════════════════════════════
+builder.Services.AddScoped<ITrendAnalysisService, TrendAnalysisService>();
+
 // Snapshot Diff Engine (Singleton - stateless comparison logic)
 
 var app = builder.Build();

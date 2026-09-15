@@ -3,6 +3,7 @@
 @using ISCM.Web.Services
 @inject ScanHistoryService HistoryService
 @inject ScanStateService StateService
+@inject ISCM.Application.Interfaces.ITrendAnalysisService TrendService
 
 <PageTitle>DefenDoor - Activity Log</PageTitle>
 
@@ -148,6 +149,14 @@
             <a href="/" class="btn-back">⬅️ Back to Dashboard</a>
         </div>
     </div>
+    @if (_isLoadingTrend)
+{
+    <div style="color:#64748b; text-align:center; padding:20px;">Loading trend data...</div>
+}
+else
+{
+    <TrendChart Result="_trendResult" />
+}
 
     <div class="split-container">
         <div class="left-panel">
@@ -204,6 +213,25 @@
 </div>
 
 @code {
+    private ISCM.Application.Analytics.TrendAnalysisResult? _trendResult;
+    private bool _isLoadingTrend = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            _trendResult = await TrendService.AnalyzeGlobalTrendAsync(maxDataPoints: 20);
+        }
+        catch (Exception ex)
+        {
+            StateService.LogAction($"Failed to load trend data: {ex.Message}");
+        }
+        finally
+        {
+            _isLoadingTrend = false;
+        }
+    }
+
     private void ClearHistory()
     {
         HistoryService.ClearHistory();
