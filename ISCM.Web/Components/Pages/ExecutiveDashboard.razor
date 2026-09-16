@@ -1,0 +1,535 @@
+﻿@page "/executive-dashboard"
+@rendermode InteractiveServer
+@using ISCM.Application.Analytics
+@using ISCM.Application.Interfaces
+@inject IExecutiveKpiService KpiService
+@inject NavigationManager Navigation
+
+<PageTitle>Executive Dashboard - ISCM</PageTitle>
+
+<style>
+    .exec-dashboard {
+        padding: 20px;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+
+    .exec-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+
+    .exec-title {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .exec-subtitle {
+        font-size: 14px;
+        color: #64748b;
+        margin-top: 4px;
+    }
+
+    .back-btn {
+        background: #334155;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        text-decoration: none;
+        font-size: 14px;
+        transition: background 0.2s;
+    }
+
+    .back-btn:hover {
+        background: #475569;
+    }
+
+    .kpi-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 20px;
+        margin-bottom: 30px;
+    }
+
+    .kpi-card {
+        background: white;
+        border-radius: 12px;
+        padding: 24px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        border: 1px solid #e2e8f0;
+    }
+
+    .kpi-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        color: #64748b;
+        margin-bottom: 8px;
+    }
+
+    .kpi-value {
+        font-size: 36px;
+        font-weight: 700;
+        color: #1e293b;
+        line-height: 1;
+    }
+
+    .kpi-unit {
+        font-size: 18px;
+        color: #94a3b8;
+        margin-left: 4px;
+    }
+
+    .kpi-trend {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 13px;
+        margin-top: 8px;
+        padding: 4px 8px;
+        border-radius: 4px;
+    }
+
+    .trend-up {
+        background: #dcfce7;
+        color: #16a34a;
+    }
+
+    .trend-down {
+        background: #fee2e2;
+        color: #dc2626;
+    }
+
+    .trend-stable {
+        background: #f1f5f9;
+        color: #64748b;
+    }
+
+    .trend-insufficient {
+        background: #fef3c7;
+        color: #d97706;
+    }
+
+    .score-display {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+    }
+
+    .grade-badge {
+        display: inline-block;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+        margin-left: 8px;
+    }
+
+    .grade-a { background: #dcfce7; color: #16a34a; }
+    .grade-b { background: #dbeafe; color: #2563eb; }
+    .grade-c { background: #fef3c7; color: #d97706; }
+    .grade-d { background: #fed7aa; color: #ea580c; }
+    .grade-f { background: #fee2e2; color: #dc2626; }
+
+    .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #1e293b;
+        margin: 30px 0 16px;
+    }
+
+    .risk-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+
+    .risk-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        text-align: center;
+        border: 2px solid;
+    }
+
+    .risk-critical { border-color: #dc2626; background: #fef2f2; }
+    .risk-high { border-color: #ea580c; background: #fff7ed; }
+    .risk-medium { border-color: #d97706; background: #fefce8; }
+    .risk-low { border-color: #64748b; background: #f8fafc; }
+
+    .risk-count {
+        font-size: 32px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    .risk-critical .risk-count { color: #dc2626; }
+    .risk-high .risk-count { color: #ea580c; }
+    .risk-medium .risk-count { color: #d97706; }
+    .risk-low .risk-count { color: #64748b; }
+
+    .risk-label {
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 8px;
+        color: #64748b;
+    }
+
+    .performance-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 30px;
+    }
+
+    .performance-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+    }
+
+    .performance-value {
+        font-size: 28px;
+        font-weight: 700;
+        color: #1e293b;
+    }
+
+    .performance-label {
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 4px;
+    }
+
+    .threshold-banner {
+        padding: 16px 20px;
+        border-radius: 10px;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .threshold-met {
+        background: #dcfce7;
+        border: 2px solid #16a34a;
+        color: #15803d;
+    }
+
+    .threshold-not-met {
+        background: #fef3c7;
+        border: 2px solid #d97706;
+        color: #92400e;
+    }
+
+    .threshold-icon {
+        font-size: 24px;
+    }
+
+    .threshold-text {
+        font-size: 15px;
+        font-weight: 500;
+    }
+
+    .top-failing {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
+    }
+
+    .top-failing-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+    }
+
+    .top-failing-name {
+        font-size: 16px;
+        font-weight: 600;
+        color: #1e293b;
+    }
+
+    .top-failing-count {
+        background: #fee2e2;
+        color: #dc2626;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 14px;
+        font-weight: 600;
+    }
+
+    .loading-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #64748b;
+    }
+
+    .empty-state {
+        text-align: center;
+        padding: 60px 20px;
+        color: #94a3b8;
+    }
+
+    .empty-icon {
+        font-size: 48px;
+        margin-bottom: 16px;
+    }
+
+    .refresh-btn {
+        background: #3b82f6;
+        color: white;
+        padding: 10px 20px;
+        border-radius: 8px;
+        border: none;
+        font-size: 14px;
+        cursor: pointer;
+        transition: background 0.2s;
+    }
+
+    .refresh-btn:hover {
+        background: #2563eb;
+    }
+
+    .refresh-btn:disabled {
+        background: #94a3b8;
+        cursor: not-allowed;
+    }
+</style>
+
+<div class="exec-dashboard">
+    <div class="exec-header">
+        <div>
+            <div class="exec-title">Executive Dashboard</div>
+            <div class="exec-subtitle">Compliance posture overview for management</div>
+        </div>
+        <div style="display: flex; gap: 12px; align-items: center;">
+            <button class="refresh-btn" @onclick="LoadKpis" disabled="@_isLoading">
+                @(_isLoading ? "Loading..." : "🔄 Refresh")
+            </button>
+            <a href="/" class="back-btn">← Back to Dashboard</a>
+        </div>
+    </div>
+
+    @if (_isLoading && _kpi == null)
+    {
+        <div class="loading-state">
+            <div style="font-size: 24px; margin-bottom: 8px;">⏳</div>
+            <div>Loading KPI data...</div>
+        </div>
+    }
+    else if (_kpi != null)
+    {
+        <!-- Current State KPIs -->
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Current Compliance Score</div>
+                <div class="score-display">
+                    <div class="kpi-value">@_kpi.CurrentScore<span class="kpi-unit">%</span></div>
+                    <span class="grade-badge grade-@_kpi.CurrentGrade.ToLower()">@_kpi.CurrentGrade</span>
+                </div>
+                @if (_kpi.TotalChecks > 0)
+                {
+                    <div class="kpi-trend trend-stable">
+                        @_kpi.PassedChecks / @_kpi.TotalChecks checks passed
+                    </div>
+                }
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-label">30-Day Average</div>
+                <div class="kpi-value">@_kpi.AverageScoreLast30Days<span class="kpi-unit">%</span></div>
+                <div class="kpi-trend @GetTrendClass(_kpi.Trend30Day)">
+                    @GetTrendIcon(_kpi.Trend30Day) @_kpi.Trend30Day
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-label">90-Day Average</div>
+                <div class="kpi-value">@_kpi.AverageScoreLast90Days<span class="kpi-unit">%</span></div>
+                <div class="kpi-trend @GetTrendClass(_kpi.Trend90Day)">
+                    @GetTrendIcon(_kpi.Trend90Day) @_kpi.Trend90Day
+                </div>
+            </div>
+
+            <div class="kpi-card">
+                <div class="kpi-label">Days Until Next Scan</div>
+                <div class="kpi-value">@_kpi.DaysUntilNextScheduledScan<span class="kpi-unit">days</span></div>
+                @if (_kpi.DaysSinceLastScan > 0)
+                {
+                    <div class="kpi-trend trend-stable">
+                        Last scan: @_kpi.DaysSinceLastScan days ago
+                    </div>
+                }
+            </div>
+        </div>
+
+        <!-- Threshold Indicators -->
+        @if (_kpi.MeetsTargetThreshold)
+        {
+            <div class="threshold-banner threshold-met">
+                <span class="threshold-icon">✅</span>
+                <span class="threshold-text">
+                    <strong>Target Met:</strong> Compliance score (@_kpi.CurrentScore%) exceeds target threshold (85%)
+                </span>
+            </div>
+        }
+        else if (_kpi.MeetsMinimumThreshold)
+        {
+            <div class="threshold-banner threshold-met">
+                <span class="threshold-icon">✓</span>
+                <span class="threshold-text">
+                    <strong>Minimum Met:</strong> Compliance score (@_kpi.CurrentScore%) meets minimum threshold (70%), but below target (85%)
+                </span>
+            </div>
+        }
+        else
+        {
+            <div class="threshold-banner threshold-not-met">
+                <span class="threshold-icon">⚠️</span>
+                <span class="threshold-text">
+                    <strong>Below Threshold:</strong> Compliance score (@_kpi.CurrentScore%) is below minimum threshold (70%)
+                </span>
+            </div>
+        }
+
+        <!-- Risk Indicators -->
+        <div class="section-title">Risk Indicators</div>
+        <div class="risk-grid">
+            <div class="risk-card risk-critical">
+                <div class="risk-count">@_kpi.CriticalFailures</div>
+                <div class="risk-label">Critical</div>
+            </div>
+            <div class="risk-card risk-high">
+                <div class="risk-count">@_kpi.HighFailures</div>
+                <div class="risk-label">High</div>
+            </div>
+            <div class="risk-card risk-medium">
+                <div class="risk-count">@_kpi.MediumFailures</div>
+                <div class="risk-label">Medium</div>
+            </div>
+            <div class="risk-card risk-low">
+                <div class="risk-count">@_kpi.LowFailures</div>
+                <div class="risk-label">Low</div>
+            </div>
+        </div>
+
+        @if (!string.IsNullOrEmpty(_kpi.TopFailingControl) && _kpi.TopFailingControl != "N/A")
+        {
+            <div class="top-failing">
+                <div class="top-failing-header">
+                    <div class="top-failing-name">🎯 Top Failing Control: @_kpi.TopFailingControl</div>
+                    <div class="top-failing-count">@_kpi.TopFailingControlCount failures</div>
+                </div>
+            </div>
+        }
+
+        <!-- Performance Metrics -->
+        <div class="section-title">Performance Metrics</div>
+        <div class="performance-grid">
+            <div class="performance-card">
+                <div class="performance-value">@_kpi.LongestStreakWithoutRegression</div>
+                <div class="performance-label">Longest Streak (No Regression)</div>
+            </div>
+            <div class="performance-card">
+                <div class="performance-value">@_kpi.ConsecutiveImprovements</div>
+                <div class="performance-label">Current Consecutive Improvements</div>
+            </div>
+            <div class="performance-card">
+                <div class="performance-value">@_kpi.DaysSinceLastImprovement</div>
+                <div class="performance-label">Days Since Last Improvement</div>
+            </div>
+            <div class="performance-card">
+                <div class="performance-value">@_kpi.TotalScansLast30Days</div>
+                <div class="performance-label">Scans in Last 30 Days</div>
+            </div>
+        </div>
+
+        <!-- Historical Summary -->
+        <div class="section-title">Historical Summary</div>
+        <div class="kpi-grid">
+            <div class="kpi-card">
+                <div class="kpi-label">Total Scans (All Time)</div>
+                <div class="kpi-value">@_kpi.TotalScansAllTime</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Scans (Last 30 Days)</div>
+                <div class="kpi-value">@_kpi.TotalScansLast30Days</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Total Scans (Last 90 Days)</div>
+                <div class="kpi-value">@_kpi.TotalScansLast90Days</div>
+            </div>
+            <div class="kpi-card">
+                <div class="kpi-label">Failed Checks</div>
+                <div class="kpi-value">@_kpi.FailedChecks</div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="empty-state">
+            <div class="empty-icon">📊</div>
+            <div>No KPI data available</div>
+            <div style="margin-top: 12px; font-size: 14px;">
+                Run your first scan to see executive metrics here.
+            </div>
+        </div>
+    }
+</div>
+
+@code {
+    private ExecutiveKpi? _kpi;
+    private bool _isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadKpis();
+    }
+
+    private async Task LoadKpis()
+    {
+        _isLoading = true;
+        StateHasChanged();
+
+        try
+        {
+            _kpi = await KpiService.CalculateKpisAsync();
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Error loading KPIs: {ex.Message}");
+            _kpi = null;
+        }
+        finally
+        {
+            _isLoading = false;
+            StateHasChanged();
+        }
+    }
+
+    private string GetTrendClass(TrendDirection trend) => trend switch
+    {
+        TrendDirection.Improving => "trend-up",
+        TrendDirection.Regressing => "trend-down",
+        TrendDirection.Stable => "trend-stable",
+        TrendDirection.InsufficientData => "trend-insufficient",
+        _ => "trend-stable"
+    };
+
+    private string GetTrendIcon(TrendDirection trend) => trend switch
+    {
+        TrendDirection.Improving => "📈",
+        TrendDirection.Regressing => "📉",
+        TrendDirection.Stable => "➡️",
+        TrendDirection.InsufficientData => "❓",
+        _ => "➡️"
+    };
+}
