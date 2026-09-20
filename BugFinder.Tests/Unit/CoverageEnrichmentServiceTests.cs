@@ -134,7 +134,7 @@ public class CoverageEnrichmentServiceTests
                 Localization = new FailureLocalization { PrimaryLineNumber = 10 },
                 Metadata = new Dictionary<string, string>()
             }
-        }
+        };
 
         // Act
         _service.EnrichFailures(failures, coverage);
