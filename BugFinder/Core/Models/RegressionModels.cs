@@ -42,3 +42,34 @@ public enum RegressionConfidence
     Medium,   // Method-level correlation
     High      // Line-level + temporal correlation
 }
+
+
+public class RevisionSnapshot
+{
+    public string CommitSha { get; set; } = string.Empty;
+    public string ShortSha { get; set; } = string.Empty;
+    public string BranchName { get; set; } = string.Empty;
+    public string Message { get; set; } = string.Empty;
+    public string AuthorName { get; set; } = string.Empty;
+    public string? AuthorEmail { get; set; }
+    public DateTime CommitTimestamp { get; set; }
+    public DateTime? CommitterTimestamp { get; set; }
+    public List<string> ParentShas { get; set; } = new();
+
+    // Dirty State
+    public bool IsDirty { get; set; }
+    public int FilesChangedCount { get; set; }
+    public List<string> ChangedFiles { get; set; } = new();
+
+    // Tags & Main Branch Relation
+    public List<string> TagsOnThisCommit { get; set; } = new();
+    public int CommitsAheadOfMain { get; set; }
+    public int CommitsBehindMain { get; set; }
+}
+
+public class RevisionSnapshotResult
+{
+    public bool Success { get; set; }
+    public string? ErrorMessage { get; set; }
+    public RevisionSnapshot? Snapshot { get; set; }
+}
