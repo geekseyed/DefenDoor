@@ -7,41 +7,54 @@ namespace ISCM.Tests.Unit.BugFinder;
 public class RegressionHistoryServiceTests
 {
     [Fact]
-    public void Constructor_WhenNotInGitRepository_ReturnsError()
+    public void Constructor_WhenNotInGitRepository_HandlesGracefully()
     {
         // Arrange & Act
-        var service = new RegressionHistoryService("C:\\"); // Root directory without git
+        // Passing a path that is definitely not a git repo
+        var service = new RegressionHistoryService("C:\\Windows\\Temp");
 
-        // Assert (indirectly tested via methods that will fail)
-        // The service should not throw, but methods should return error results
+        // Assert - Service should instantiate without throwing
+        service.Should().NotBeNull();
     }
 
     [Fact]
-    public async Task FindLastPassingRevisionAsync_WhenInRepository_SearchesCommits()
+    public async Task FindLastPassingRevisionAsync_ExecutesAndReturnsResult()
     {
         // Arrange
         var service = new RegressionHistoryService();
 
         // Act
-        var result = await service.FindLastPassingRevisionAsync(maxCommitsToSearch: 5);
+        // Search only last 3 commits to keep test fast
+        var result = await service.FindLastPassingRevisionAsync(maxCommitsToSearch: 3);
 
         // Assert
-        // Note: This test may take time as it actually runs tests on historical commits
-        // In CI, you might want to skip or mock this
         result.Should().NotBeNull();
-        // We can't assert success/failure without knowing repo state
+        // We don't assert Success=true because it depends on actual test state in history
+        result.CommitsSearched.Should().BeLessThanOrEqualTo(3);
     }
 
     [Fact]
-    public void RegressionHistoryService_ImplementsBothBF10_3AndBF10_4()
+    public async Task FindFirstFailingRevisionAsync_RequiresLastPassingSha()
     {
         // Arrange
         var service = new RegressionHistoryService();
 
+        // Act
+        var result = await service.FindFirstFailingRevisionAsync("invalid-sha-or-no-range");
+
         // Assert
-        service.Should().NotBeNull();
-        // Verify methods exist via reflection
-        service.GetType().GetMethod("FindLastPassingRevisionAsync").Should().NotBeNull();
-        service.GetType().GetMethod("FindFirstFailingRevisionAsync").Should().NotBeNull();
+        result.Success.Should().BeFalse("because the SHA is invalid or no commits exist after it");
+        result.ErrorMessage.Should().NotBeNullOrEmpty();
+    }
+
+    [Fact]
+    public void RegressionSearchResult_Model_HasRequiredProperties()
+    {
+        // Arrange
+        var result = new ISCM.BugFinder.Core.Models.RegressionSearchResult();
+
+        // Assert
+        result.TestedCommits.Should().NotBeNull("because it should be initialized as empty list");
+        result.Strategy.Should().Be(ISCM.BugFinder.Core.Models.SearchStrategy.LinearBackward);
     }
 }
