@@ -43,7 +43,7 @@ public class FailureHistoryServiceTests
         {
             FailureSignature = "SIG_TEST_001",
             TestName = "MyTestClass.MyTestMethod",
-            Summary = "Assertion failed",
+            Message = "Assertion failed",
             OccurredAt = DateTime.UtcNow
         };
 
