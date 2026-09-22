@@ -34,9 +34,12 @@ public class SharedCodeElement
 public enum CorrelationStrength
 {
     Unknown,
-    Weak,      // e.g., Same Assembly
-    Medium,    // e.g., Same File or Class
-    Strong     // e.g., Same Method or Line
+    None,       // Added for BF-11.5 (No link)
+    Weak,       // e.g., Same Assembly
+    Medium,     // e.g., Same File or Class (Required fix)
+    Moderate,   // Added for BF-11.5 (Some link)
+    Strong,     // e.g., Same Method or Line
+    Critical    // Added for BF-11.5 (Extremely high churn + failure)
 }
 
 // ==========================================
