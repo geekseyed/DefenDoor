@@ -1,8 +1,15 @@
-﻿namespace ISCM.BugFinder.Core.Models;
+﻿using System.Collections.Generic;
+
+namespace ISCM.BugFinder.Core.Models;
 
 /// <summary>
-/// BF-05: Execution Path & Cross-Test Correlation Models
+/// BF-0.5 & BF-10.7: Execution Path Correlation & Regression Analysis Models
 /// </summary>
+
+// ==========================================
+// BF-0.5: Execution Path & Cross-Test Correlation
+// ==========================================
+
 public class CorrelationResult
 {
     public int TotalFailuresAnalyzed { get; set; }
@@ -30,4 +37,42 @@ public enum CorrelationStrength
     Weak,      // e.g., Same Assembly
     Medium,    // e.g., Same File or Class
     Strong     // e.g., Same Method or Line
+}
+
+// ==========================================
+// BF-10.7: Regression Correlation (Changes vs Failures)
+// ==========================================
+
+public class RegressionCorrelationResult
+{
+    public string FromSha { get; set; } = string.Empty;
+    public string ToSha { get; set; } = string.Empty;
+
+    // Inputs
+    public List<string> FailingTestNames { get; set; } = new();
+    public List<CommitInfo> CommitsInRange { get; set; } = new();
+
+    // Output: Ranked list of suspicious files
+    public List<SuspectFile> SuspectFiles { get; set; } = new();
+
+    public AnalysisStrategy Strategy { get; set; }
+}
+
+public class SuspectFile
+{
+    public string FilePath { get; set; } = string.Empty;
+    public int ChangeFrequency { get; set; } // How many commits touched this file
+    public List<string> RelatedCommits { get; set; } = new();
+    public double SuspicionScore { get; set; } // 0.0 to 1.0
+
+    // Heuristic metadata
+    public bool IsTestFile { get; set; }
+    public string? FileExtension { get; set; }
+}
+
+public enum AnalysisStrategy
+{
+    FrequencyBased,      // Files changed most often are most suspicious
+    RecencyWeighted,     // Recent changes weigh more
+    Hybrid               // Combination (Default)
 }
