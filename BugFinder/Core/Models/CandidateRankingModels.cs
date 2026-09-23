@@ -15,13 +15,16 @@ namespace ISCM.BugFinder.Core.Models;
 /// </summary>
 public enum CandidateEvidenceType
 {
-    Sbfl,           // BF-12.4-12.6 spectrum score
-    MultiTest,      // BF-12.7 consensus
-    DomainFailure,  // BF-12.8 domain evaluation failure
-    Coverage,       // BF-06 coverage data (optional)
-    Stack,          // BF-03 stack localization (optional)
-    Regression,     // BF-10 regression boundary (optional)
-    Historical      // BF-11 recurring failure (optional)
+    Sbfl,             // BF-12.4-12.6 spectrum score
+    MultiTest,        // BF-12.7 consensus
+    DomainFailure,    // BF-12.8 domain evaluation failure
+    Coverage,         // BF-06 coverage data
+    Stack,            // BF-03 stack localization
+    Regression,       // BF-10 regression boundary
+    Historical,       // BF-11 recurring failure
+    Runtime,          // BF-08 runtime events (added 14.1)
+    TestFailure,      // BF-01/02 raw test failures (added 14.1)
+    StaticCorrelation // BF-13.8 static<->dynamic correlation (added 14.1)
 }
 
 /// <summary>
