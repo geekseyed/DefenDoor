@@ -1,9 +1,4 @@
-﻿using System;
-using System.IO;
-using System.Linq;
-using System.Threading;
-using System.Threading.Tasks;
-using ISCM.BugFinder.Core.Models;
+﻿using ISCM.BugFinder.Core.Models;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.MSBuild;
@@ -34,9 +29,19 @@ public class RoslynWorkspaceService : IDisposable
         return ws;
     }
 
-    // In-memory C# project helper (no MSBuild required)
+    // نسخه‌ی اصلی — بدون تغییر امضا؛ همه‌ی تست‌های قبلی همین را صدا می‌زنند
     public Project AddInMemoryCSharpProject(
         AdhocWorkspace ws, string projectName, params (string Name, string Source)[] files)
+    {
+        return AddInMemoryCSharpProjectWithReferences(ws, projectName, null, files);
+    }
+
+    // نسخه‌ی جدید — فقط برای پروژه‌های دارای ProjectReference (BF-13.6 Stage 1)
+    public Project AddInMemoryCSharpProjectWithReferences(
+        AdhocWorkspace ws,
+        string projectName,
+        IReadOnlyList<ProjectReference>? projectReferences,
+        params (string Name, string Source)[] files)
     {
         var projectId = ProjectId.CreateNewId();
         var version = VersionStamp.Create();
@@ -54,6 +59,7 @@ public class RoslynWorkspaceService : IDisposable
             language: LanguageNames.CSharp,
             compilationOptions: new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary),
             documents: documents,
+            projectReferences: projectReferences,
             metadataReferences: new[] { MetadataReference.CreateFromFile(typeof(object).Assembly.Location) });
 
         return ws.AddProject(projectInfo);
