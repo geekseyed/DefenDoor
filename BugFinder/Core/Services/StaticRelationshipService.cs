@@ -126,6 +126,7 @@ public class StaticRelationshipService
         report.UniqueSymbolKeys = relationships
             .SelectMany(r => new[] { r.FromKey, r.ToKey })
             .Where(k => !string.IsNullOrEmpty(k) && !k.StartsWith("UNKNOWN|"))
+            .Select(k => k!)
             .Distinct()
             .OrderBy(k => k)
             .ToList();
