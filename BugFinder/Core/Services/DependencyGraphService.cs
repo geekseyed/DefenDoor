@@ -145,14 +145,6 @@ public class DependencyGraphService
             : $"UNKNOWN|{methodDecl.Identifier.Text}";
         var fromName = methodSymbol?.ToDisplayString() ?? methodDecl.Identifier.Text;
 
-        void AddDeclaredTypeEdge(TypeSyntax syntax, TypeDependencyKind kind)
-        {
-            var type = ResolveDeclaredType(model, syntax, ct);
-            edges.Add(type is null
-                ? UnresolvedMethodEdge(fromKey, fromName, syntax.ToString(), kind, documentName)
-                : ResolvedMethodEdge(fromKey, fromName, type, kind, documentName));
-        }
-
         foreach (var creation in methodDecl.DescendantNodes().OfType<ObjectCreationExpressionSyntax>())
         {
             var createdType = ResolveCreatedType(model, creation, ct);
