@@ -35,7 +35,8 @@ public class EvidenceFusionService
             TargetFilePath = NullIfEmpty(input.TargetFilePath),
             TargetLineNumber = input.TargetLineNumber,
             SourceArtifact = NullIfEmpty(input.SourceArtifact),
-            Description = NullIfEmpty(input.Description)
+            Description = NullIfEmpty(input.Description),
+            ObservedAtUtc = input.ObservedAtUtc,
         }).ToList();
     }
 
@@ -142,7 +143,7 @@ public class EvidenceFusionService
 
     // Symbol key wins; otherwise group by file (evidence without any target
     // still lands in an explicit UNTARGETED group — nothing is dropped)
-    private static string ResolveGroupKey(FusionEvidenceInput input) =>
+    public static string ResolveGroupKey(FusionEvidenceInput input) =>
         input.TargetSymbolKey is not null
             ? input.TargetSymbolKey
             : $"FILE|{input.TargetFilePath ?? "unknown"}";

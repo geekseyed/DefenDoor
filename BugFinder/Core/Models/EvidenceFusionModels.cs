@@ -21,6 +21,7 @@ public class FusionEvidenceInput
     public int? TargetLineNumber { get; set; }
     public string? SourceArtifact { get; set; }          // TRX / coverage file / SHA / ElementId
     public string? Description { get; set; }
+    public DateTime? ObservedAtUtc { get; set; }   // optional; enables BF-14.4 timeline consistency
 }
 
 /// <summary>Stage 3: per-source weight configuration.</summary>
